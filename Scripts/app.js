@@ -65,9 +65,15 @@ function updateForecastCoverage(rawData) {
     forecastCoverageTextEl.textContent = 'Horaires des prévisions indisponibles.';
     return;
   }
-  forecastCoverageTextEl.innerHTML = `
-    Conditions initiales du <strong>${formatForecastTime(currentTime)}</strong><br>
-    Prévisions du <strong>${formatForecastTime(forecastTimes[0])}</strong> au <strong>${formatForecastTime(forecastTimes[forecastTimes.length - 1])}</strong>`;
+  forecastCoverageTextEl.replaceChildren(
+    document.createTextNode('Conditions initiales du '),
+    Object.assign(document.createElement('strong'), { textContent: formatForecastTime(currentTime) }),
+    document.createElement('br'),
+    document.createTextNode('Prévisions du '),
+    Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[0]) }),
+    document.createTextNode(' au '),
+    Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[forecastTimes.length - 1]) })
+  );
 }
 
 function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {
@@ -125,8 +131,22 @@ async function computeResult() {
     pressureMetricEl.textContent = `${weatherDrift > 0 ? '+' : ''}${Math.round(weatherDrift)} m`;
     thermalMetricEl.textContent = `${thermalDrift > 0 ? '+' : ''}${thermalDrift.toFixed(1)} m`;
     humidityMetricEl.textContent = `${humidityDrift > 0 ? '+' : ''}${humidityDrift.toFixed(1)} m`;
-    resultDetailsEl.innerHTML = `<small>La correction totale estimée est de <strong>${Math.round(trueAltitude - currentAltitude)} m</strong> par rapport à l’affichage actuel. La pression atmosphérique estimée au niveau de la mer est de <strong>${pWeatherCurrent.toFixed(1)} hPa</strong>.</small>`;
-    if (usesCurrentConditions) forecastCoverageTextEl.innerHTML += '<br><br>La calibration précède les prévisions alors la correction se fonde aussi sur les conditions initiales.';
+    const detailsText = document.createElement('small');
+    detailsText.append(
+      'La correction totale estimée est de ',
+      Object.assign(document.createElement('strong'), { textContent: `${Math.round(trueAltitude - currentAltitude)} m` }),
+      ' par rapport à l’affichage actuel. La pression atmosphérique estimée au niveau de la mer est de ',
+      Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
+      '.'
+    );
+    resultDetailsEl.replaceChildren(detailsText);
+    if (usesCurrentConditions) {
+      forecastCoverageTextEl.append(
+        document.createElement('br'),
+        document.createElement('br'),
+        'La calibration précède les prévisions alors la correction se fonde aussi sur les conditions initiales.'
+      );
+    }
     statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
     statusEl.style.color = '#86efac';
   } catch (error) {

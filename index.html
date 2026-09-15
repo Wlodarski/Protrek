@@ -468,7 +468,7 @@
           throw new Error('Lancez l’application avec « npm run serve », puis ouvrez http://localhost:8000.');
         }
 
-        const response = await fetch('/api/legacy-refresh-forecast', {
+        const response = await fetch('./disabled-refresh-endpoint', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });

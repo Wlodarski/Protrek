@@ -111,11 +111,6 @@
         margin-top: 4px;
       }
 
-      .small {
-        color: var(--muted);
-        font-size: 0.8rem;
-      }
-
       .result-card {
         margin-top: 20px;
         padding: 18px 16px;
@@ -131,7 +126,7 @@
         border-left: 3px solid var(--accent);
         background: rgba(15, 23, 42, 0.65);
         color: var(--muted);
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         line-height: 1.5;
       }
 
@@ -208,7 +203,6 @@
         </div>
 
         <div id="status" class="status" aria-live="polite"></div>
-        <div class="small">Les valeurs sont stockées dans le navigateur via localStorage.</div>
       </form>
 
       <div class="result-card" id="resultCard" aria-live="polite">
@@ -374,13 +368,19 @@
         return await response.json();
       }
 
-      function formatForecastTime(timeString) {
+      function formatForecastTime(timeString, onlyHour = false) {
         if (!timeString) return 'indisponible';
 
         const date = new Date(timeString);
         if (Number.isNaN(date.getTime())) return timeString;
 
-        return new Intl.DateTimeFormat('fr-FR', {
+        if(onlyHour) {
+          return new Intl.DateTimeFormat('fr-CA', {
+          timeStyle: 'short'
+        }).format(date);
+        }
+
+        return new Intl.DateTimeFormat('fr-CA', {
           dateStyle: 'short',
           timeStyle: 'short'
         }).format(date);
@@ -402,9 +402,8 @@
         const currentLabel = formatForecastTime(currentTime);
 
         forecastCoverageEl.innerHTML = `
-          <strong>Couverture météo</strong><br>
-          Prévisions : <strong>${forecastStart}</strong> à <strong>${forecastEnd}</strong><br>
-          Conditions actuelles : <strong>${currentLabel}</strong>
+          Conditions actuelles : <strong>${currentLabel}</strong><br>
+          Prévisions : <strong>${forecastStart}</strong> à <strong>${forecastEnd}</strong>
         `;
       }
 
@@ -473,11 +472,11 @@
           pressureMetricEl.textContent = pressureText;
           thermalMetricEl.textContent = thermalText;
           humidityMetricEl.textContent = humidityText;
-          resultDetailsEl.textContent = `Correction totale estimée : ${Math.round(trueAltitude - currentAltitude)} m par rapport à l’affichage actuel.`;
+          resultDetailsEl.innerHTML = `<small>La correction totale estimée est de <strong>${Math.round(trueAltitude - currentAltitude)} m</strong> par rapport à l’affichage actuel.</small>`;
           if (usesCurrentConditions) {
-            forecastCoverageEl.innerHTML += '<br>La correction se fonde sur les conditions actuelles.';
+            forecastCoverageEl.innerHTML += '<br><br>La calibration précède les prévisions alors la correction se fonde aussi sur les conditions actuelles.';
           }
-          statusEl.textContent = 'Correction calculée.';
+          statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
           statusEl.style.color = '#86efac';
         } catch (error) {
           console.error(error);

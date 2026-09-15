@@ -1,572 +1,597 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pro Trek - Calibration</title>
-    <style>
-      :root {
-        --bg: #0f172a;
-        --panel: #111827;
-        --panel-2: #1f2937;
-        --text: #e5e7eb;
-        --muted: #9ca3af;
-        --accent: #38bdf8;
-        --accent-2: #22c55e;
-        --danger: #ef4444;
-      }
 
-      * { box-sizing: border-box; }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro Trek - Calibration</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+    }
 
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, #020617, #0f172a 45%, #111827);
-        color: var(--text);
-        font-family: Arial, Helvetica, sans-serif;
-      }
+    * {
+      box-sizing: border-box;
+    }
 
-      .panel {
-        width: min(480px, 92vw);
-        background: rgba(17, 24, 39, 0.95);
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        border-radius: 16px;
-        padding: 28px;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.4);
-      }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #020617, #0f172a 45%, #111827);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
 
-      h1 {
-        margin: 0 0 8px;
-        font-size: 1.7rem;
-      }
+    .panel {
+      width: min(480px, 92vw);
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.4);
+    }
 
-      .subtitle {
-        margin: 0 0 22px;
-        color: var(--muted);
-        font-size: 0.96rem;
-      }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.7rem;
+    }
 
-      form {
-        display: grid;
-        gap: 18px;
-      }
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
 
-      label {
-        display: grid;
-        gap: 8px;
-        font-size: 0.95rem;
-      }
+    form {
+      display: grid;
+      gap: 18px;
+    }
 
-      input {
-        width: 100%;
-        padding: 12px 14px;
-        border-radius: 10px;
-        border: 1px solid rgba(148, 163, 184, 0.3);
-        background: var(--panel-2);
-        color: var(--text);
-        font-size: 1rem;
-      }
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 0.95rem;
+    }
 
-      input:focus {
-        outline: 2px solid rgba(56, 189, 248, 0.5);
-        border-color: var(--accent);
-      }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 1rem;
+    }
 
-      .actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
+    input:focus {
+      outline: 2px solid rgba(56, 189, 248, 0.5);
+      border-color: var(--accent);
+    }
 
-      button {
-        border: none;
-        border-radius: 10px;
-        padding: 12px 16px;
-        font-size: 0.96rem;
-        cursor: pointer;
-        transition: transform 0.15s ease, opacity 0.15s ease;
-      }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-      button:hover {
-        transform: translateY(-1px);
-      }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.96rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
 
-      .primary {
-        background: var(--accent);
-        color: #062033;
-        font-weight: 700;
-      }
+    button:hover {
+      transform: translateY(-1px);
+    }
 
-      .secondary {
-        background: rgba(148, 163, 184, 0.15);
-        color: var(--text);
-      }
+    .primary {
+      background: var(--accent);
+      color: #062033;
+      font-weight: 700;
+    }
 
-      .status {
-        min-height: 24px;
-        color: var(--accent-2);
-        font-size: 0.9rem;
-        margin-top: 4px;
-      }
+    .secondary {
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text);
+    }
 
-      .result-card {
-        margin-top: 20px;
-        padding: 18px 16px;
-        border-radius: 12px;
-        background: rgba(31, 41, 55, 0.9);
-        border: 1px solid rgba(148, 163, 184, 0.22);
-        color: #e5e7eb;
-      }
+    .status {
+      min-height: 24px;
+      color: var(--accent-2);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
 
-      .forecast-coverage {
-        margin-top: 12px;
-        padding: 12px 16px;
-        border-left: 3px solid var(--accent);
-        background: rgba(15, 23, 42, 0.65);
-        color: var(--muted);
-        font-size: 0.7rem;
-        line-height: 1.5;
-      }
+    .result-card {
+      margin-top: 20px;
+      padding: 18px 16px;
+      border-radius: 12px;
+      background: rgba(31, 41, 55, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #e5e7eb;
+    }
 
-      .forecast-coverage strong {
-        color: var(--text);
-        font-weight: 400;
-      }
+    .forecast-coverage {
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-left: 3px solid var(--accent);
+      background: rgba(15, 23, 42, 0.65);
+      color: var(--muted);
+      font-size: 0.7rem;
+      line-height: 1.5;
+      opacity: 0.3;
+      transition: ease-in 1.5s;
+    }
 
-      .result-label {
-        color: #9ca3af;
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
+    .forecast-coverage:hover {
+      opacity: 1;
+      transition: ease-out 0.1s;
+    }
 
-      .result-value {
-        font-size: 2.1rem;
-        font-weight: 700;
-        margin-top: 8px;
-      }
+    .forecast-coverage strong {
+      color: var(--text);
+      font-weight: 400;
+    }
 
-      .metric-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 14px;
-      }
+    .forecast-refresh {
+      margin-bottom: 8px;
+      padding: 5px 9px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 6px;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text);
+      font-size: 0.72rem;
+    }
 
-      .metric {
-        background: rgba(15, 23, 42, 0.8);
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 10px;
-        padding: 10px 8px;
-      }
+    .result-label {
+      color: #9ca3af;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
 
-      .metric-name {
-        display: block;
-        color: #9ca3af;
-        font-size: 0.7rem;
-        margin-bottom: 6px;
-      }
+    .result-value {
+      font-size: 2.1rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
 
-      .metric-value {
-        display: block;
-        font-weight: 700;
-        font-size: 0.9rem;
-      }
-    </style>
-  </head>
-  <body>
-    <main class="panel">
-      <h1>Calibration Pro Trek</h1>
-      <p class="subtitle">Calcule l'altitude réelle corrigée à partir de la pression, de la température et de l'humidité.</p>
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
 
-      <form id="calibrationForm">
-        <label>
-          Heure de calibration
-          <input id="calibrationTime" type="time" required />
-        </label>
+    .metric {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      padding: 10px 8px;
+    }
 
-        <label>
-          Altitude réelle de calibration (m)
-          <input id="calibrationAltitude" type="number" step="1" min="-100" max="5000" required />
-        </label>
+    .metric-name {
+      display: block;
+      color: #9ca3af;
+      font-size: 0.7rem;
+      margin-bottom: 6px;
+    }
 
-        <label>
-          Altitude affichée par la Pro Trek (m)
-          <input id="currentAltitude" type="number" step="1" min="-2000" max="5000" required />
-        </label>
+    .metric-value {
+      display: block;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
 
-        <div class="actions">
-          <button type="submit" class="primary">Calculer</button>
-          <button type="button" class="secondary" id="refreshBtn">Rafraîchir météo</button>
-        </div>
+<body>
+  <main class="panel">
+    <h1>Calibration Pro Trek</h1>
+    <p class="subtitle">Calcule l'altitude réelle corrigée à partir de la pression, de la température et de l'humidité.
+    </p>
 
-        <div id="status" class="status" aria-live="polite"></div>
-      </form>
+    <form id="calibrationForm">
+      <label>
+        Heure de calibration
+        <input id="calibrationTime" type="time" required />
+      </label>
 
-      <div class="result-card" id="resultCard" aria-live="polite">
-        <div class="result-label">Altitude réelle estimée</div>
-        <div class="result-value" id="resultValue">-- m</div>
+      <label>
+        Altitude réelle de calibration (m)
+        <input id="calibrationAltitude" type="number" step="1" min="-100" max="5000" required />
+      </label>
 
-        <div class="metric-grid">
-          <div class="metric">
-            <span class="metric-name">Pression</span>
-            <span class="metric-value" id="pressureMetric">-- m</span>
-          </div>
-          <div class="metric">
-            <span class="metric-name">Thermique</span>
-            <span class="metric-value" id="thermalMetric">-- m</span>
-          </div>
-          <div class="metric">
-            <span class="metric-name">Hygro</span>
-            <span class="metric-value" id="humidityMetric">-- m</span>
-          </div>
-        </div>
+      <label>
+        Altitude affichée par la Pro Trek (m)
+        <input id="currentAltitude" type="number" step="1" min="-2000" max="5000" required />
+      </label>
 
-        <div class="result-details" id="resultDetails">Aucune correction calculée.</div>
+      <div class="actions">
+        <button type="submit" class="primary">Calculer</button>
       </div>
 
-      <section class="forecast-coverage" id="forecastCoverage" aria-live="polite">
-        Prévisions : chargement des horaires...
-      </section>
-    </main>
+      <div id="status" class="status" aria-live="polite"></div>
+    </form>
 
-    <script>
-      const STORAGE_KEYS = {
-        time: 'protrek.calibration.time',
-        altitude: 'protrek.calibration.altitude',
-        currentAltitude: 'protrek.current.altitude'
-      };
+    <div class="result-card" id="resultCard" aria-live="polite">
+      <div class="result-label">Altitude réelle estimée</div>
+      <div class="result-value" id="resultValue">-- m</div>
 
-      const form = document.getElementById('calibrationForm');
-      const timeInput = document.getElementById('calibrationTime');
-      const altitudeInput = document.getElementById('calibrationAltitude');
-      const currentAltitudeInput = document.getElementById('currentAltitude');
-      const statusEl = document.getElementById('status');
-      const resultValueEl = document.getElementById('resultValue');
-      const resultDetailsEl = document.getElementById('resultDetails');
-      const pressureMetricEl = document.getElementById('pressureMetric');
-      const thermalMetricEl = document.getElementById('thermalMetric');
-      const humidityMetricEl = document.getElementById('humidityMetric');
-      const refreshBtn = document.getElementById('refreshBtn');
-      const forecastCoverageEl = document.getElementById('forecastCoverage');
+      <div class="metric-grid">
+        <div class="metric">
+          <span class="metric-name">Pression</span>
+          <span class="metric-value" id="pressureMetric">-- m</span>
+        </div>
+        <div class="metric">
+          <span class="metric-name">Thermique</span>
+          <span class="metric-value" id="thermalMetric">-- m</span>
+        </div>
+        <div class="metric">
+          <span class="metric-name">Hygro</span>
+          <span class="metric-value" id="humidityMetric">-- m</span>
+        </div>
+      </div>
 
-      const FORECAST_PATH = 'Scripts/protrek_forecast.json';
+      <div class="result-details" id="resultDetails">Aucune correction calculée.</div>
+    </div>
 
-      function calculateAltitudeFromPressure(pressure_hpa) {
-        if (typeof pressure_hpa !== 'number' || pressure_hpa <= 0) return null;
-        const L_LAPSE = 0.0065;
-        const EXPOSANT = 0.190284;
-        const T0_K = 288.15;
-        const P0_HPA = 1013.25;
-        const ratio_p_p0 = pressure_hpa / P0_HPA;
-        const altitude_m = (T0_K / L_LAPSE) * (1 - (ratio_p_p0 ** EXPOSANT));
-        return Number.isFinite(altitude_m) ? Math.round(altitude_m) : null;
+    <section class="forecast-coverage" id="forecastCoverage" aria-live="polite">
+      <button type="button" class="forecast-refresh" id="refreshBtn">Rafraîchir prévisions</button>
+      <div id="forecastCoverageText">Prévisions : chargement des horaires...</div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEYS = {
+      time: 'protrek.calibration.time',
+      altitude: 'protrek.calibration.altitude',
+      currentAltitude: 'protrek.current.altitude'
+    };
+
+    const form = document.getElementById('calibrationForm');
+    const timeInput = document.getElementById('calibrationTime');
+    const altitudeInput = document.getElementById('calibrationAltitude');
+    const currentAltitudeInput = document.getElementById('currentAltitude');
+    const statusEl = document.getElementById('status');
+    const resultValueEl = document.getElementById('resultValue');
+    const resultDetailsEl = document.getElementById('resultDetails');
+    const pressureMetricEl = document.getElementById('pressureMetric');
+    const thermalMetricEl = document.getElementById('thermalMetric');
+    const humidityMetricEl = document.getElementById('humidityMetric');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const forecastCoverageEl = document.getElementById('forecastCoverage');
+    const forecastCoverageTextEl = document.getElementById('forecastCoverageText');
+
+    const FORECAST_PATH = 'Scripts/protrek_forecast.json';
+
+    function calculateAltitudeFromPressure(pressure_hpa) {
+      if (typeof pressure_hpa !== 'number' || pressure_hpa <= 0) return null;
+      const L_LAPSE = 0.0065;
+      const EXPOSANT = 0.190284;
+      const T0_K = 288.15;
+      const P0_HPA = 1013.25;
+      const ratio_p_p0 = pressure_hpa / P0_HPA;
+      const altitude_m = (T0_K / L_LAPSE) * (1 - (ratio_p_p0 ** EXPOSANT));
+      return Number.isFinite(altitude_m) ? Math.round(altitude_m) : null;
+    }
+
+    function parseLocalToMinutes(dateStr) {
+      if (!dateStr || dateStr.length < 16) return 0;
+      const portionLocale = dateStr.slice(0, 16);
+      const dateNeutre = new Date(`${portionLocale}:00Z`);
+      return Math.floor(dateNeutre.getTime() / 60000);
+    }
+
+    function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
+      if (!rawData || !Array.isArray(rawData.validTimeLocal) || !Array.isArray(rawData[fieldName])) {
+        return null;
       }
 
-      function parseLocalToMinutes(dateStr) {
-        if (!dateStr || dateStr.length < 16) return 0;
-        const portionLocale = dateStr.slice(0, 16);
-        const dateNeutre = new Date(`${portionLocale}:00Z`);
-        return Math.floor(dateNeutre.getTime() / 60000);
+      const localTimes = rawData.validTimeLocal;
+      const values = rawData[fieldName];
+      const currentFieldValue = rawData.current && rawData.current[fieldName] !== undefined
+        ? rawData.current[fieldName]
+        : null;
+      const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
+      const timesMinutes = localTimes.map((timeStr) => parseLocalToMinutes(timeStr));
+
+      if (targetMinutes <= timesMinutes[0]) {
+        return currentFieldValue !== null ? currentFieldValue : values[0];
+      }
+      if (targetMinutes >= timesMinutes[timesMinutes.length - 1]) return values[values.length - 1];
+
+      let i = 0;
+      while (i < timesMinutes.length - 1 && timesMinutes[i + 1] <= targetMinutes) {
+        i += 1;
       }
 
-      function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
-        if (!rawData || !Array.isArray(rawData.validTimeLocal) || !Array.isArray(rawData[fieldName])) {
-          return null;
-        }
+      const t0 = timesMinutes[i];
+      const t1 = timesMinutes[i + 1];
+      const v0 = values[i];
+      const v1 = values[i + 1];
+      const vPrev = i > 0 ? values[i - 1] : v0;
+      const vNext = i < values.length - 2 ? values[i + 2] : v1;
 
-        const localTimes = rawData.validTimeLocal;
-        const values = rawData[fieldName];
-        const currentFieldValue = rawData.current && rawData.current[fieldName] !== undefined
-          ? rawData.current[fieldName]
-          : null;
-        const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
-        const timesMinutes = localTimes.map((timeStr) => parseLocalToMinutes(timeStr));
+      if (t1 === t0) return v0;
 
-        if (targetMinutes <= timesMinutes[0]) {
-          return currentFieldValue !== null ? currentFieldValue : values[0];
-        }
-        if (targetMinutes >= timesMinutes[timesMinutes.length - 1]) return values[values.length - 1];
+      const fraction = (targetMinutes - t0) / (t1 - t0);
+      const tDelta = t1 - t0;
 
-        let i = 0;
-        while (i < timesMinutes.length - 1 && timesMinutes[i + 1] <= targetMinutes) {
-          i += 1;
-        }
-
-        const t0 = timesMinutes[i];
-        const t1 = timesMinutes[i + 1];
-        const v0 = values[i];
-        const v1 = values[i + 1];
-        const vPrev = i > 0 ? values[i - 1] : v0;
-        const vNext = i < values.length - 2 ? values[i + 2] : v1;
-
-        if (t1 === t0) return v0;
-
-        const fraction = (targetMinutes - t0) / (t1 - t0);
-        const tDelta = t1 - t0;
-
-        if (fieldName === 'pressureMeanSeaLevel') {
-          const logV0 = Math.log(Math.max(v0, 1e-6));
-          const logV1 = Math.log(Math.max(v1, 1e-6));
-          const logInterpolated = logV0 + fraction * (logV1 - logV0);
-          return Math.exp(logInterpolated);
-        }
-
-        const slope0 = (v1 - vPrev) / (tDelta + (timesMinutes[i] - timesMinutes[i - 1] || tDelta));
-        const slope1 = (vNext - v0) / (tDelta + (timesMinutes[i + 2] - t1 || tDelta));
-        const m0 = slope0;
-        const m1 = slope1;
-        const h00 = 2 * fraction * fraction * fraction - 3 * fraction * fraction + 1;
-        const h10 = fraction * fraction * fraction - 2 * fraction * fraction + fraction;
-        const h01 = -2 * fraction * fraction * fraction + 3 * fraction * fraction;
-        const h11 = fraction * fraction * fraction - fraction * fraction;
-
-        return h00 * v0 + h10 * (tDelta * m0) + h01 * v1 + h11 * (tDelta * m1);
+      if (fieldName === 'pressureMeanSeaLevel') {
+        const logV0 = Math.log(Math.max(v0, 1e-6));
+        const logV1 = Math.log(Math.max(v1, 1e-6));
+        const logInterpolated = logV0 + fraction * (logV1 - logV0);
+        return Math.exp(logInterpolated);
       }
 
-      function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
-        if (!rawData || !Array.isArray(rawData.validTimeLocal) || rawData.validTimeLocal.length === 0) {
-          return false;
-        }
+      const slope0 = (v1 - vPrev) / (tDelta + (timesMinutes[i] - timesMinutes[i - 1] || tDelta));
+      const slope1 = (vNext - v0) / (tDelta + (timesMinutes[i + 2] - t1 || tDelta));
+      const m0 = slope0;
+      const m1 = slope1;
+      const h00 = 2 * fraction * fraction * fraction - 3 * fraction * fraction + 1;
+      const h10 = fraction * fraction * fraction - 2 * fraction * fraction + fraction;
+      const h01 = -2 * fraction * fraction * fraction + 3 * fraction * fraction;
+      const h11 = fraction * fraction * fraction - fraction * fraction;
 
-        const current = rawData.current;
-        const currentExists = current
-          && current.temperature !== undefined
-          && current.pressureMeanSeaLevel !== undefined
-          && current.relativeHumidity !== undefined;
-        const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
-        const firstForecastMinutes = parseLocalToMinutes(rawData.validTimeLocal[0]);
+      return h00 * v0 + h10 * (tDelta * m0) + h01 * v1 + h11 * (tDelta * m1);
+    }
 
-        return Boolean(currentExists && targetMinutes <= firstForecastMinutes);
+    function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
+      if (!rawData || !Array.isArray(rawData.validTimeLocal) || rawData.validTimeLocal.length === 0) {
+        return false;
       }
 
-      function calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent) {
-        return hTheoreticalCurrent - hTheoreticalCal;
+      const current = rawData.current;
+      const currentExists = current
+        && current.temperature !== undefined
+        && current.pressureMeanSeaLevel !== undefined
+        && current.relativeHumidity !== undefined;
+      const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
+      const firstForecastMinutes = parseLocalToMinutes(rawData.validTimeLocal[0]);
+
+      return Boolean(currentExists && targetMinutes <= firstForecastMinutes);
+    }
+
+    function calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent) {
+      return hTheoreticalCurrent - hTheoreticalCal;
+    }
+
+    function calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent) {
+      const isaTempCal = 15 - 0.0065 * hTheoreticalCal;
+      const isaTempCurrent = 15 - 0.0065 * hTheoreticalCurrent;
+      const tempBiasCal = tempWeatherCal - isaTempCal;
+      const tempBiasCurrent = tempWeatherCurrent - isaTempCurrent;
+      return 0.5 * ((tempBiasCurrent - tempBiasCal) * (hTheoreticalCurrent / 288.15));
+    }
+
+    function calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent) {
+      const humidityTermCal = (humidityCal - 50) * 0.01;
+      const humidityTermCurrent = (humidityCurrent - 50) * 0.01;
+      return 0.25 * (humidityTermCurrent - humidityTermCal) * (hTheoreticalCurrent / 1000);
+    }
+
+    async function loadForecast() {
+      const response = await fetch(FORECAST_PATH, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Impossible de charger ${FORECAST_PATH}`);
       }
+      return await response.json();
+    }
 
-      function calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent) {
-        const isaTempCal = 15 - 0.0065 * hTheoreticalCal;
-        const isaTempCurrent = 15 - 0.0065 * hTheoreticalCurrent;
-        const tempBiasCal = tempWeatherCal - isaTempCal;
-        const tempBiasCurrent = tempWeatherCurrent - isaTempCurrent;
-        return 0.5 * ((tempBiasCurrent - tempBiasCal) * (hTheoreticalCurrent / 288.15));
-      }
+    function formatForecastTime(timeString, onlyHour = false) {
+      if (!timeString) return 'indisponible';
 
-      function calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent) {
-        const humidityTermCal = (humidityCal - 50) * 0.01;
-        const humidityTermCurrent = (humidityCurrent - 50) * 0.01;
-        return 0.25 * (humidityTermCurrent - humidityTermCal) * (hTheoreticalCurrent / 1000);
-      }
+      const date = new Date(timeString);
+      if (Number.isNaN(date.getTime())) return timeString;
 
-      async function loadForecast() {
-        const response = await fetch(FORECAST_PATH, { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error(`Impossible de charger ${FORECAST_PATH}`);
-        }
-        return await response.json();
-      }
-
-      function formatForecastTime(timeString, onlyHour = false) {
-        if (!timeString) return 'indisponible';
-
-        const date = new Date(timeString);
-        if (Number.isNaN(date.getTime())) return timeString;
-
-        if(onlyHour) {
-          return new Intl.DateTimeFormat('fr-CA', {
-          timeStyle: 'short'
-        }).format(date);
-        }
-
+      if (onlyHour) {
         return new Intl.DateTimeFormat('fr-CA', {
-          dateStyle: 'short',
           timeStyle: 'short'
         }).format(date);
       }
 
-      function updateForecastCoverage(rawData) {
-        const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal)
-          ? rawData.validTimeLocal
-          : [];
-        const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
+      return new Intl.DateTimeFormat('fr-CA', {
+        dateStyle: 'full',
+        timeStyle: 'short'
+      }).format(date);
+    }
 
-        if (forecastTimes.length === 0 && !currentTime) {
-          forecastCoverageEl.textContent = 'Horaires des prévisions indisponibles.';
-          return;
-        }
+    function updateForecastCoverage(rawData) {
+      const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal)
+        ? rawData.validTimeLocal
+        : [];
+      const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
 
-        const forecastStart = formatForecastTime(forecastTimes[0]);
-        const forecastEnd = formatForecastTime(forecastTimes[forecastTimes.length - 1]);
-        const currentLabel = formatForecastTime(currentTime);
+      if (forecastTimes.length === 0 && !currentTime) {
+        forecastCoverageTextEl.textContent = 'Horaires des prévisions indisponibles.';
+        return;
+      }
 
-        forecastCoverageEl.innerHTML = `
-          Conditions actuelles : <strong>${currentLabel}</strong><br>
-          Prévisions : <strong>${forecastStart}</strong> à <strong>${forecastEnd}</strong>
+      const forecastStart = formatForecastTime(forecastTimes[0]);
+      const forecastEnd = formatForecastTime(forecastTimes[forecastTimes.length - 1]);
+      const currentLabel = formatForecastTime(currentTime);
+
+      forecastCoverageTextEl.innerHTML = `
+          Conditions initiales du <strong>${currentLabel}</strong><br>
+          Prévisions du <strong>${forecastStart}</strong> au <strong>${forecastEnd}</strong>
         `;
+    }
+
+    function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {
+      const [hours, minutes] = timeValue.split(':').map(Number);
+      const date = new Date(referenceDate.getTime());
+      date.setHours(hours, minutes, 0, 0);
+
+      if (date > referenceDate) {
+        date.setDate(date.getDate() - 1);
       }
 
-      function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {
-        const [hours, minutes] = timeValue.split(':').map(Number);
-        const date = new Date(referenceDate.getTime());
-        date.setHours(hours, minutes, 0, 0);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hours)}:${pad(minutes)}:00`;
+    }
 
-        if (date > referenceDate) {
-          date.setDate(date.getDate() - 1);
-        }
+    function buildCurrentTimeString() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
 
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hours)}:${pad(minutes)}:00`;
-      }
+    async function computeResult() {
+      const timeValue = timeInput.value;
+      const calibrationAltitude = Number(altitudeInput.value);
+      const currentAltitude = Number(currentAltitudeInput.value);
 
-      function buildCurrentTimeString() {
-        const now = new Date();
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-      }
-
-      async function computeResult() {
-        const timeValue = timeInput.value;
-        const calibrationAltitude = Number(altitudeInput.value);
-        const currentAltitude = Number(currentAltitudeInput.value);
-
-        if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
-          statusEl.textContent = 'Veuillez remplir tous les champs.';
-          statusEl.style.color = '#fca5a5';
-          resultValueEl.textContent = '-- m';
-          resultDetailsEl.textContent = 'Aucune correction calculée.';
-          return;
-        }
-
-        try {
-          const rawData = await loadForecast();
-          updateForecastCoverage(rawData);
-          const targetTimeStr = buildCurrentTimeString();
-          const calTimeStr = buildTimeStringFromInput(timeValue, new Date());
-
-          const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
-          const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
-          const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
-          const tempWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'temperature');
-          const humidityCal = getValueAtTime(rawData, calTimeStr, 'relativeHumidity');
-          const humidityCurrent = getValueAtTime(rawData, targetTimeStr, 'relativeHumidity');
-          const usesCurrentConditions = usesCurrentConditionsForTime(rawData, calTimeStr);
-
-          if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent].some((v) => v === null || v === undefined)) {
-            throw new Error('La météo n’est pas disponible pour les heures demandées.');
-          }
-
-          const hTheoreticalCal = calculateAltitudeFromPressure(pWeatherCal);
-          const hTheoreticalCurrent = calculateAltitudeFromPressure(pWeatherCurrent);
-          const weatherDrift = calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent);
-          const thermalDrift = calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent);
-          const humidityDrift = calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent);
-          const trueAltitude = currentAltitude - weatherDrift + thermalDrift + humidityDrift;
-
-          const pressureText = `${weatherDrift > 0 ? '+' : ''}${Math.round(weatherDrift)} m`;
-          const thermalText = `${thermalDrift > 0 ? '+' : ''}${thermalDrift.toFixed(1)} m`;
-          const humidityText = `${humidityDrift > 0 ? '+' : ''}${humidityDrift.toFixed(1)} m`;
-
-          resultValueEl.textContent = `${Math.round(trueAltitude)} m`;
-          pressureMetricEl.textContent = pressureText;
-          thermalMetricEl.textContent = thermalText;
-          humidityMetricEl.textContent = humidityText;
-          resultDetailsEl.innerHTML = `<small>La correction totale estimée est de <strong>${Math.round(trueAltitude - currentAltitude)} m</strong> par rapport à l’affichage actuel.</small>`;
-          if (usesCurrentConditions) {
-            forecastCoverageEl.innerHTML += '<br><br>La calibration précède les prévisions alors la correction se fonde aussi sur les conditions actuelles.';
-          }
-          statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
-          statusEl.style.color = '#86efac';
-        } catch (error) {
-          console.error(error);
-          statusEl.textContent = `Erreur: ${error.message}`;
-          statusEl.style.color = '#fca5a5';
-          resultValueEl.textContent = '-- m';
-          pressureMetricEl.textContent = '-- m';
-          thermalMetricEl.textContent = '-- m';
-          humidityMetricEl.textContent = '-- m';
-          resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué.';
-        }
-      }
-
-      function loadSavedValues() {
-        const savedTime = localStorage.getItem(STORAGE_KEYS.time) || '09:04';
-        const savedAltitude = localStorage.getItem(STORAGE_KEYS.altitude) || '32';
-        const savedCurrentAltitude = localStorage.getItem(STORAGE_KEYS.currentAltitude) || '0';
-
-        timeInput.value = savedTime;
-        altitudeInput.value = savedAltitude;
-        currentAltitudeInput.value = savedCurrentAltitude;
-      }
-
-      function saveValues(timeValue, altitudeValue, currentAltitudeValue) {
-        localStorage.setItem(STORAGE_KEYS.time, timeValue);
-        localStorage.setItem(STORAGE_KEYS.altitude, altitudeValue);
-        localStorage.setItem(STORAGE_KEYS.currentAltitude, currentAltitudeValue);
-      }
-
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-
-        const timeValue = timeInput.value;
-        const altitudeValue = altitudeInput.value;
-        const currentAltitudeValue = currentAltitudeInput.value;
-
-        if (!timeValue || !altitudeValue || !currentAltitudeValue) {
-          statusEl.textContent = 'Veuillez remplir tous les champs.';
-          statusEl.style.color = '#fca5a5';
-          return;
-        }
-
-        saveValues(timeValue, altitudeValue, currentAltitudeValue);
-        await computeResult();
-      });
-
-      refreshBtn.addEventListener('click', async () => {
-        statusEl.textContent = 'Rafraîchissement des prévisions...';
-        statusEl.style.color = '#93c5fd';
-
-        try {
-          if (window.location.protocol === 'file:') {
-            throw new Error('Lancez l’application avec « npm run serve », puis ouvrez http://localhost:8000.');
-          }
-
-          const response = await fetch('/api/refresh-forecast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-
-          const data = await response.json();
-
-          if (!response.ok || !data.ok) {
-            throw new Error(data.message || 'Échec du rafraîchissement.');
-          }
-
-          updateForecastCoverage(await loadForecast());
-          statusEl.textContent = 'Prévisions actualisées. Vous pouvez recalculer.';
-          statusEl.style.color = '#86efac';
-        } catch (error) {
-          statusEl.textContent = error.message || 'Impossible de rafraîchir les prévisions.';
-          statusEl.style.color = '#fca5a5';
-        }
-      });
-
-      document.querySelector('.result-details').style.marginTop = '10px';
-      document.querySelector('.result-details').style.color = '#cbd5e1';
-      document.querySelector('.result-details').style.fontSize = '0.9rem';
-
-      resultValueEl.textContent = '-- m';
-      pressureMetricEl.textContent = '-- m';
-      thermalMetricEl.textContent = '-- m';
-      humidityMetricEl.textContent = '-- m';
-
-      loadSavedValues();
-      computeResult().catch((error) => {
-        console.error(error);
-        statusEl.textContent = 'Le forecast n’a pas pu être chargé.';
+      if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
+        statusEl.textContent = 'Veuillez remplir tous les champs.';
         statusEl.style.color = '#fca5a5';
-      });
-    </script>
-  </body>
+        resultValueEl.textContent = '-- m';
+        resultDetailsEl.textContent = 'Aucune correction calculée.';
+        return;
+      }
+
+      try {
+        const rawData = await loadForecast();
+        updateForecastCoverage(rawData);
+        const targetTimeStr = buildCurrentTimeString();
+        const calTimeStr = buildTimeStringFromInput(timeValue, new Date());
+
+        const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
+        const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
+        const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
+        const tempWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'temperature');
+        const humidityCal = getValueAtTime(rawData, calTimeStr, 'relativeHumidity');
+        const humidityCurrent = getValueAtTime(rawData, targetTimeStr, 'relativeHumidity');
+        const usesCurrentConditions = usesCurrentConditionsForTime(rawData, calTimeStr);
+
+        if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent].some((v) => v === null || v === undefined)) {
+          throw new Error('La météo n’est pas disponible pour les heures demandées.');
+        }
+
+        const hTheoreticalCal = calculateAltitudeFromPressure(pWeatherCal);
+        const hTheoreticalCurrent = calculateAltitudeFromPressure(pWeatherCurrent);
+        const weatherDrift = calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent);
+        const thermalDrift = calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent);
+        const humidityDrift = calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent);
+        const trueAltitude = currentAltitude - weatherDrift + thermalDrift + humidityDrift;
+
+        const pressureText = `${weatherDrift > 0 ? '+' : ''}${Math.round(weatherDrift)} m`;
+        const thermalText = `${thermalDrift > 0 ? '+' : ''}${thermalDrift.toFixed(1)} m`;
+        const humidityText = `${humidityDrift > 0 ? '+' : ''}${humidityDrift.toFixed(1)} m`;
+
+        resultValueEl.textContent = `${Math.round(trueAltitude)} m`;
+        pressureMetricEl.textContent = pressureText;
+        thermalMetricEl.textContent = thermalText;
+        humidityMetricEl.textContent = humidityText;
+        resultDetailsEl.innerHTML = `<small>La correction totale estimée est de <strong>${Math.round(trueAltitude - currentAltitude)} m</strong> par rapport à l’affichage actuel. 
+          La pression atmosphérique estimée au niveau de la mer est de <strong>${pWeatherCurrent.toFixed(1)} hPa</strong>.</small>`;
+        if (usesCurrentConditions) {
+          forecastCoverageTextEl.innerHTML += '<br><br>La calibration précède les prévisions alors la correction se fonde aussi sur les conditions initiales.';
+        }
+        statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
+        statusEl.style.color = '#86efac';
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = `Erreur: ${error.message}`;
+        statusEl.style.color = '#fca5a5';
+        resultValueEl.textContent = '-- m';
+        pressureMetricEl.textContent = '-- m';
+        thermalMetricEl.textContent = '-- m';
+        humidityMetricEl.textContent = '-- m';
+        resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué.';
+      }
+    }
+
+    function loadSavedValues() {
+      const savedTime = localStorage.getItem(STORAGE_KEYS.time) || '09:04';
+      const savedAltitude = localStorage.getItem(STORAGE_KEYS.altitude) || '32';
+      const savedCurrentAltitude = localStorage.getItem(STORAGE_KEYS.currentAltitude) || '0';
+
+      timeInput.value = savedTime;
+      altitudeInput.value = savedAltitude;
+      currentAltitudeInput.value = savedCurrentAltitude;
+    }
+
+    function saveValues(timeValue, altitudeValue, currentAltitudeValue) {
+      localStorage.setItem(STORAGE_KEYS.time, timeValue);
+      localStorage.setItem(STORAGE_KEYS.altitude, altitudeValue);
+      localStorage.setItem(STORAGE_KEYS.currentAltitude, currentAltitudeValue);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const timeValue = timeInput.value;
+      const altitudeValue = altitudeInput.value;
+      const currentAltitudeValue = currentAltitudeInput.value;
+
+      if (!timeValue || !altitudeValue || !currentAltitudeValue) {
+        statusEl.textContent = 'Veuillez remplir tous les champs.';
+        statusEl.style.color = '#fca5a5';
+        return;
+      }
+
+      saveValues(timeValue, altitudeValue, currentAltitudeValue);
+      await computeResult();
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      statusEl.textContent = 'Rafraîchissement des prévisions...';
+      statusEl.style.color = '#93c5fd';
+
+      try {
+        if (window.location.protocol === 'file:') {
+          throw new Error('Lancez l’application avec « npm run serve », puis ouvrez http://localhost:8000.');
+        }
+
+        const response = await fetch('/api/refresh-forecast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.message || 'Échec du rafraîchissement.');
+        }
+
+        updateForecastCoverage(await loadForecast());
+        statusEl.textContent = 'Prévisions actualisées. Vous pouvez recalculer.';
+        statusEl.style.color = '#86efac';
+      } catch (error) {
+        statusEl.textContent = error.message || 'Impossible de rafraîchir les prévisions.';
+        statusEl.style.color = '#fca5a5';
+      }
+    });
+
+    document.querySelector('.result-details').style.marginTop = '10px';
+    document.querySelector('.result-details').style.color = '#cbd5e1';
+    document.querySelector('.result-details').style.fontSize = '0.9rem';
+
+    resultValueEl.textContent = '-- m';
+    pressureMetricEl.textContent = '-- m';
+    thermalMetricEl.textContent = '-- m';
+    humidityMetricEl.textContent = '-- m';
+
+    loadSavedValues();
+    computeResult().catch((error) => {
+      console.error(error);
+      statusEl.textContent = 'Le forecast n’a pas pu être chargé.';
+      statusEl.style.color = '#fca5a5';
+    });
+  </script>
+</body>
+
 </html>

@@ -48,7 +48,7 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (url.pathname === '/api/refresh-forecast') {
-    const child = spawn(process.execPath, ['Scripts/main.js'], {
+    const child = spawn(process.execPath, ['Scripts/refresh_forecast.js'], {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe']
     });

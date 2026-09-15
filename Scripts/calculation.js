@@ -1,5 +1,4 @@
-(function createCalculationApi(global) {
-  function calculateAltitudeFromPressure(pressure_hpa) {
+export function calculateAltitudeFromPressure(pressure_hpa) {
     if (typeof pressure_hpa !== 'number' || pressure_hpa <= 0) return null;
     const L_LAPSE = 0.0065;
     const EXPOSANT = 0.190284;
@@ -9,15 +8,14 @@
     const altitude_m = (T0_K / L_LAPSE) * (1 - (ratio_p_p0 ** EXPOSANT));
     return Number.isFinite(altitude_m) ? Math.round(altitude_m) : null;
   }
-
-  function parseLocalToMinutes(dateStr) {
+function parseLocalToMinutes(dateStr) {
     if (!dateStr || dateStr.length < 16) return 0;
     const portionLocale = dateStr.slice(0, 16);
     const dateNeutre = new Date(`${portionLocale}:00Z`);
     return Math.floor(dateNeutre.getTime() / 60000);
   }
 
-  function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
+export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
     if (!rawData || !Array.isArray(rawData.validTimeLocal) || !Array.isArray(rawData[fieldName])) {
       return null;
     }
@@ -69,7 +67,7 @@
     return h00 * v0 + h10 * (tDelta * slope0) + h01 * v1 + h11 * (tDelta * slope1);
   }
 
-  function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
+export function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
     if (!rawData || !Array.isArray(rawData.validTimeLocal) || rawData.validTimeLocal.length === 0) {
       return false;
     }
@@ -85,11 +83,11 @@
     return Boolean(currentExists && targetMinutes <= firstForecastMinutes);
   }
 
-  function calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent) {
+export function calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent) {
     return hTheoreticalCurrent - hTheoreticalCal;
   }
 
-  function calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent) {
+export function calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent) {
     const isaTempCal = 15 - 0.0065 * hTheoreticalCal;
     const isaTempCurrent = 15 - 0.0065 * hTheoreticalCurrent;
     const tempBiasCal = tempWeatherCal - isaTempCal;
@@ -97,18 +95,9 @@
     return 0.5 * ((tempBiasCurrent - tempBiasCal) * (hTheoreticalCurrent / 288.15));
   }
 
-  function calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent) {
+export function calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent) {
     const humidityTermCal = (humidityCal - 50) * 0.01;
     const humidityTermCurrent = (humidityCurrent - 50) * 0.01;
     return 0.25 * (humidityTermCurrent - humidityTermCal) * (hTheoreticalCurrent / 1000);
   }
 
-  global.ProtrekCalculation = {
-    calculateAltitudeFromPressure,
-    getValueAtTime,
-    usesCurrentConditionsForTime,
-    calculatePressureDrift,
-    calculateThermalDrift,
-    calculateHumidityDrift
-  };
-}(window));

@@ -2,7 +2,7 @@
  * @file Module gérant les appels aux API météo externes et l'extraction précise de données.
  */
 
-require('dotenv').config();
+import 'dotenv/config';
 
 const WEATHER_CONFIG = {
     API_KEY: process.env.WEATHER_API_KEY,
@@ -15,7 +15,7 @@ const CURRENT_API_URL = "https://api.weather.com/v3/wx/observations/current";
 /**
  * Récupère les observations météo du moment.
  */
-async function fetchCurrentConditions() {
+export async function fetchCurrentConditions() {
     const url = `${CURRENT_API_URL}?apiKey=${WEATHER_CONFIG.API_KEY}&units=m&language=en-US&format=json&geocode=${WEATHER_CONFIG.GEOCODE}`;
     try {
         console.log("Tentative de récupération des conditions actuelles...");
@@ -27,11 +27,10 @@ async function fetchCurrentConditions() {
         throw error;
     }
 }
-
 /**
  * Récupère les prévisions météo horaires depuis l'API.
  */
-async function fetchHourlyForecast() {
+export async function fetchHourlyForecast() {
     const url = `${BASE_API_URL}?apiKey=${WEATHER_CONFIG.API_KEY}&units=m&language=en-US&format=json&geocode=${WEATHER_CONFIG.GEOCODE}`;
     try {
         console.log("Tentative de récupération des prévisions météo...");
@@ -44,7 +43,7 @@ async function fetchHourlyForecast() {
     }
 }
 
-async function fetchCombinedForecast() {
+export async function fetchCombinedForecast() {
     const [forecast, current] = await Promise.all([
         fetchHourlyForecast(),
         fetchCurrentConditions()
@@ -80,7 +79,7 @@ function parseLocalToMinutes(dateStr) {
     return Math.floor(dateNeutre.getTime() / 60000);
 }
 
-function hasCoverageForTime(rawData, targetLocalTimeString) {
+export function hasCoverageForTime(rawData, targetLocalTimeString) {
     if (!rawData) {
         return false;
     }
@@ -103,7 +102,7 @@ function hasCoverageForTime(rawData, targetLocalTimeString) {
     return targetMinutes <= lastForecastMinutes;
 }
 
-function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
+export function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
     if (!rawData) {
         return false;
     }
@@ -189,22 +188,21 @@ function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
 /**
  * Calcule la pression interpolée en utilisant une comparaison brute des heures locales textuelles.
  */
-async function getPressureAtTime(rawData, targetLocalTimeString) {
+export async function getPressureAtTime(rawData, targetLocalTimeString) {
     return getValueAtTime(rawData, targetLocalTimeString, 'pressureMeanSeaLevel');
 }
 
 /**
  * Calcule la température interpolée à un instant donné.
  */
-async function getTemperatureAtTime(rawData, targetLocalTimeString) {
+export async function getTemperatureAtTime(rawData, targetLocalTimeString) {
     return getValueAtTime(rawData, targetLocalTimeString, 'temperature');
 }
 
 /**
  * Calcule l'humidité relative interpolée à un instant donné.
  */
-async function getRelativeHumidityAtTime(rawData, targetLocalTimeString) {
+export async function getRelativeHumidityAtTime(rawData, targetLocalTimeString) {
     return getValueAtTime(rawData, targetLocalTimeString, 'relativeHumidity');
 }
 
-module.exports = { fetchHourlyForecast, fetchCurrentConditions, fetchCombinedForecast, hasCoverageForTime, usesCurrentConditionsForTime, getPressureAtTime, getTemperatureAtTime, getRelativeHumidityAtTime };

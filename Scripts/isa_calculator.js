@@ -12,7 +12,7 @@ const CONSTANTS = {
 /**
  * Calcule l'altitude théorique en mètres basé sur le modèle ISA standard.
  */
-function calculateAltitudeFromPressure(pressure_hpa) {
+export function calculateAltitudeFromPressure(pressure_hpa) {
     if (typeof pressure_hpa !== 'number' || pressure_hpa <= 0) return null;
 
     try {
@@ -34,11 +34,10 @@ function calculateAltitudeFromPressure(pressure_hpa) {
 }
 
 
-
 /**
  * Calcule l'altitude réelle en tenant compte d'un décalage de référence initial.
  */
-function calculateTrueAltitude(H_ref, P_initial_hpa, P_pred_hpa) {
+export function calculateTrueAltitude(H_ref, P_initial_hpa, P_pred_hpa) {
     if (typeof H_ref !== 'number' || typeof P_initial_hpa !== 'number') {
         return { error: "Données d'entrée invalides." };
     }
@@ -71,7 +70,7 @@ function calculateTrueAltitude(H_ref, P_initial_hpa, P_pred_hpa) {
 /**
  * Calcule la pression théorique en hPa basée sur l'altitude ISA standard (Formule inverse).
  */
-function calculatePressureFromAltitude(altitude_m) {
+export function calculatePressureFromAltitude(altitude_m) {
     if (typeof altitude_m !== 'number') return null;
     const L_LAPSE = 0.0065;
     const EXPOSANT = 0.190284;
@@ -83,6 +82,4 @@ function calculatePressureFromAltitude(altitude_m) {
     return pressure_hpa;
 }
 
-// Mettez à jour vos exports pour inclure la nouvelle fonction
-module.exports = { calculateTrueAltitude, calculateAltitudeFromPressure, calculatePressureFromAltitude };
 

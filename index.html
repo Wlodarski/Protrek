@@ -254,8 +254,9 @@
     </section>
   </main>
 
-  <script src="Scripts/calculation.js"></script>
+  <script type="module" src="./Scripts/main.js"></script>
   <script>
+    if (false) {
     const STORAGE_KEYS = {
       time: 'protrek.calibration.time',
       altitude: 'protrek.calibration.altitude',
@@ -500,6 +501,7 @@
       statusEl.textContent = 'Le forecast n’a pas pu être chargé.';
       statusEl.style.color = '#fca5a5';
     });
+    }
   </script>
 </body>
 

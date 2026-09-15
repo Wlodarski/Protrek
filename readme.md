@@ -8,7 +8,7 @@ Corriger l'altitude affichée par une Pro Trek en prenant en compte la dérive m
 
 ### 1. Données météo utilisées
 
-Le script lit les prévisions horaires contenues dans `protrek_forecast.json` et exploite :
+Le script lit les prévisions horaires et exploite :
 - la pression au niveau mer
 - la température
 - l'humidité relative
@@ -37,8 +37,8 @@ $$
 $$
 
 On obtient alors :
-- `hTheoreticalCal` : altitude ISA au moment de calibration
-- `hTheoreticalCurrent` : altitude ISA au moment actuel
+- altitude ISA au moment de calibration
+- altitude ISA au moment actuel
 
 ### 4. Dérive barométrique
 

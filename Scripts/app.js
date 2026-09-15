@@ -18,6 +18,7 @@ const STORAGE_KEYS = {
 };
 const FORECAST_PATH = './Scripts/protrek_forecast.json';
 const FORECAST_STORAGE_KEY = 'protrek_forecast';
+const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 
 const form = document.getElementById('calibrationForm');
 const timeInput = document.getElementById('calibrationTime');
@@ -58,11 +59,35 @@ function formatForecastTime(timeString, onlyHour = false) {
     : { dateStyle: 'full', timeStyle: 'short' }).format(date);
 }
 
+function getStoredLocation() {
+  try {
+    const location = JSON.parse(localStorage.getItem(USER_LOCATION_STORAGE_KEY));
+    if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
+      return location;
+    }
+  } catch (error) {
+  }
+  return null;
+}
+
+function prependForecastLocation(location) {
+  if (!location) return;
+  forecastCoverageTextEl.prepend(
+    document.createTextNode('Prévisions centrées sur '),
+    Object.assign(document.createElement('strong'), {
+      textContent: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+    }),
+    document.createElement('br')
+  );
+}
+
 function updateForecastCoverage(rawData) {
   const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
   const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
+  const location = rawData?.location || getStoredLocation();
   if (forecastTimes.length === 0 && !currentTime) {
     forecastCoverageTextEl.textContent = 'Horaires des prévisions indisponibles.';
+    prependForecastLocation(location);
     return;
   }
   forecastCoverageTextEl.replaceChildren(
@@ -74,6 +99,7 @@ function updateForecastCoverage(rawData) {
     document.createTextNode(' au '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[forecastTimes.length - 1]) })
   );
+  prependForecastLocation(location);
 }
 
 function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {

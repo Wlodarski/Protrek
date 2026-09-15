@@ -2,24 +2,53 @@ import { getApiKey } from './api_key_storage.js';
 
 const BASE_API_URL = 'https://api.weather.com/v3/wx/forecast/hourly/3day';
 const CURRENT_API_URL = 'https://api.weather.com/v3/wx/observations/current';
-const DEFAULT_GEOCODE = '45.5818441,-73.5440191';
+const DEFAULT_GEOCODE = '45.58,-73.54';
+const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
+
+function isValidLocation(location) {
+  return location
+    && Number.isFinite(location.latitude)
+    && Number.isFinite(location.longitude)
+    && location.latitude >= -90
+    && location.latitude <= 90
+    && location.longitude >= -180
+    && location.longitude <= 180;
+}
+
+function getStoredLocation() {
+  try {
+    const location = JSON.parse(localStorage.getItem(USER_LOCATION_STORAGE_KEY));
+    return isValidLocation(location) ? location : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getDefaultLocation() {
+  const [latitude, longitude] = DEFAULT_GEOCODE.split(',').map(Number);
+  return { latitude, longitude };
+}
 
 function getUserGeocode() {
-  if (!navigator.geolocation) return Promise.resolve(DEFAULT_GEOCODE);
+  const storedLocation = getStoredLocation();
+  if (!navigator.geolocation) {
+    return Promise.resolve(storedLocation || getDefaultLocation());
+  }
 
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const { latitude, longitude } = coords;
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-          resolve(DEFAULT_GEOCODE);
+        const location = { latitude: coords.latitude, longitude: coords.longitude };
+        if (!isValidLocation(location)) {
+          resolve(storedLocation || getDefaultLocation());
           return;
         }
-        resolve(`${latitude.toFixed(6)},${longitude.toFixed(6)}`);
+        localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
+        resolve(location);
       },
       (error) => {
         console.warn('Position utilisateur indisponible, position par défaut utilisée:', error.message);
-        resolve(DEFAULT_GEOCODE);
+        resolve(storedLocation || getDefaultLocation());
       },
       { enableHighAccuracy: false, maximumAge: 300000, timeout: 10000 }
     );
@@ -49,7 +78,8 @@ async function fetchJson(baseUrl, label, geocode) {
 }
 
 export async function fetchCombinedForecast() {
-  const geocode = await getUserGeocode();
+  const location = await getUserGeocode();
+  const geocode = `${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`;
   const [forecast, current] = await Promise.all([
     fetchJson(BASE_API_URL, 'Prévisions météo', geocode),
     fetchJson(CURRENT_API_URL, 'Conditions actuelles', geocode)
@@ -57,6 +87,7 @@ export async function fetchCombinedForecast() {
 
   return {
     generatedAt: new Date().toISOString(),
+    location,
     current: {
       validTimeLocal: current.validTimeLocal || current.validTimeUtc || null,
       pressureMeanSeaLevel: current.pressureMeanSeaLevel,

@@ -4,7 +4,7 @@
   "description": "Calibration et correction d'altitude pour Pro Trek.",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#020617",
   "theme_color": "#020617",
   "icons": [

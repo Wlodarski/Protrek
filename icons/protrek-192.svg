@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Pro Trek">
+  <rect width="192" height="192" rx="32" fill="#020617"/>
+  <path d="M32 144 78 48l30 58 18-30 34 68H32Z" fill="#38bdf8"/>
+  <path d="m54 144 36-55 19 31 14-21 27 45H54Z" fill="#22c55e"/>
+  <circle cx="145" cy="48" r="13" fill="#f8fafc"/>
+</svg>

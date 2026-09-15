@@ -1,0 +1,24 @@
+{
+  "name": "Pro Trek Calibration",
+  "short_name": "Pro Trek",
+  "description": "Calibration et correction d'altitude pour Pro Trek.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#38bdf8",
+  "icons": [
+    {
+      "src": "./icons/protrek-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/protrek-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

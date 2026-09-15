@@ -1,0 +1,16 @@
+{
+  "name": "protrek",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "download:forecast": "node Scripts/main.js",
+    "serve": "node server.js",
+    "start": "npm run download:forecast && npm run serve"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "fs": "^0.0.1-security",
+    "http-server": "^14.1.1",
+    "node-fetch": "^3.3.2"
+  }
+}

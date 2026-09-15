@@ -6,7 +6,7 @@
   "scope": "./",
   "display": "standalone",
   "background_color": "#020617",
-  "theme_color": "#38bdf8",
+  "theme_color": "#020617",
   "icons": [
     {
       "src": "./icons/protrek-192.svg",

@@ -6,6 +6,10 @@ import {
   calculateThermalDrift,
   calculateHumidityDrift
 } from './calculation.js';
+import { initializeApiKey } from './api_key_storage.js';
+import { fetchCombinedForecast } from './weather_client.js';
+
+await initializeApiKey();
 
 const STORAGE_KEYS = {
   time: 'protrek.calibration.time',
@@ -160,12 +164,9 @@ refreshBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Rafraîchissement des prévisions...';
   statusEl.style.color = '#93c5fd';
   try {
-    if (window.location.protocol === 'file:') throw new Error('Lancez l’application avec « npm run serve », puis ouvrez http://localhost:8000.');
-    const response = await fetch('./api/refresh-forecast', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-    const data = await response.json();
-    if (!response.ok || !data.ok || !data.forecast) throw new Error(data.message || 'Échec du rafraîchissement.');
-    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(data.forecast));
-    updateForecastCoverage(data.forecast);
+    const forecast = await fetchCombinedForecast();
+    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
+    updateForecastCoverage(forecast);
     statusEl.textContent = 'Prévisions actualisées. Vous pouvez recalculer.';
     statusEl.style.color = '#86efac';
   } catch (error) {

@@ -5,6 +5,8 @@ const STATIC_FILES = [
   './Scripts/main.js',
   './Scripts/app.js',
   './Scripts/calculation.js',
+  './Scripts/api_key_storage.js',
+  './Scripts/weather_client.js',
   './Scripts/protrek_forecast.json',
   './icons/protrek-192.svg',
   './icons/protrek-512.svg'

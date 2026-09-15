@@ -257,6 +257,7 @@
   </main>
 
   <script type="module" src="./Scripts/main.js"></script>
+  <!-- Legacy inline implementation retained only as migration history; the module entry point above is authoritative.
   <script>
     if (false) {
     const STORAGE_KEYS = {
@@ -467,7 +468,7 @@
           throw new Error('Lancez l’application avec « npm run serve », puis ouvrez http://localhost:8000.');
         }
 
-        const response = await fetch('/api/refresh-forecast', {
+        const response = await fetch('/api/legacy-refresh-forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -504,7 +505,7 @@
       statusEl.style.color = '#fca5a5';
     });
     }
-  </script>
+  </script> -->
 </body>
 
 </html>

@@ -66,10 +66,30 @@ const server = http.createServer((req, res) => {
 
     child.on('close', (code) => {
       if (code === 0) {
-        sendJson(res, 200, {
-          ok: true,
-          message: 'Forecast refreshed successfully',
-          stdout
+        fs.readFile(path.join(ROOT, 'Scripts', 'protrek_forecast.json'), 'utf8', (readError, content) => {
+          if (readError) {
+            sendJson(res, 500, {
+              ok: false,
+              message: 'Forecast refreshed but could not be read',
+              stderr: readError.message
+            });
+            return;
+          }
+
+          try {
+            sendJson(res, 200, {
+              ok: true,
+              message: 'Forecast refreshed successfully',
+              forecast: JSON.parse(content),
+              stdout
+            });
+          } catch (parseError) {
+            sendJson(res, 500, {
+              ok: false,
+              message: 'Forecast refreshed but contains invalid JSON',
+              stderr: parseError.message
+            });
+          }
         });
         return;
       }

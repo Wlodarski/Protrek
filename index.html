@@ -277,13 +277,26 @@
     const forecastCoverageTextEl = document.getElementById('forecastCoverageText');
 
     const FORECAST_PATH = 'Scripts/protrek_forecast.json';
+    const FORECAST_STORAGE_KEY = 'protrek_forecast';
 
     async function loadForecast() {
+      const storedForecast = localStorage.getItem(FORECAST_STORAGE_KEY);
+      if (storedForecast) {
+        try {
+          return JSON.parse(storedForecast);
+        } catch (error) {
+          localStorage.removeItem(FORECAST_STORAGE_KEY);
+        }
+      }
+
       const response = await fetch(FORECAST_PATH, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Impossible de charger ${FORECAST_PATH}`);
       }
-      return await response.json();
+
+      const forecast = await response.json();
+      localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
+      return forecast;
     }
 
     function formatForecastTime(timeString, onlyHour = false) {
@@ -458,11 +471,12 @@
 
         const data = await response.json();
 
-        if (!response.ok || !data.ok) {
+        if (!response.ok || !data.ok || !data.forecast) {
           throw new Error(data.message || 'Échec du rafraîchissement.');
         }
 
-        updateForecastCoverage(await loadForecast());
+        localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(data.forecast));
+        updateForecastCoverage(data.forecast);
         statusEl.textContent = 'Prévisions actualisées. Vous pouvez recalculer.';
         statusEl.style.color = '#86efac';
       } catch (error) {

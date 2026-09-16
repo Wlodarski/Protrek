@@ -16,7 +16,7 @@ const STORAGE_KEYS = {
   altitude: 'protrek.calibration.altitude',
   currentAltitude: 'protrek.current.altitude'
 };
-const FORECAST_PATH = './Scripts/protrek_forecast.json';
+const FORECAST_PATH = './scripts/protrek_forecast.json';
 const FORECAST_STORAGE_KEY = 'protrek_forecast';
 const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 

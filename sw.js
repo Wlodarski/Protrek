@@ -2,12 +2,12 @@ const CACHE_NAME = 'protrek-v4';
 const STATIC_FILES = [
   './index.html',
   './manifest.json',
-  './Scripts/main.js',
-  './Scripts/app.js',
-  './Scripts/calculation.js',
-  './Scripts/api_key_storage.js',
-  './Scripts/weather_client.js',
-  './Scripts/protrek_forecast.json',
+  './scripts/main.js',
+  './scripts/app.js',
+  './scripts/calculation.js',
+  './scripts/api_key_storage.js',
+  './scripts/weather_client.js',
+  './scripts/protrek_forecast.json',
   './icons/protrek-192.svg',
   './icons/protrek-512.svg'
 ];

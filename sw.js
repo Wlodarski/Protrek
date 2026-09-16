@@ -1,4 +1,4 @@
-const CACHE_NAME = 'protrek-v7';
+const CACHE_NAME = 'protrek-v7valide';
 const STATIC_FILES = [
   './index.html',
   './manifest.json',
@@ -12,19 +12,25 @@ const STATIC_FILES = [
   './icons/protrek-512.svg'
 ];
 
+const INDEX_URL = new URL('./index.html', self.registration.scope).href;
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(
-      STATIC_FILES.map((file) => new URL(file, self.registration.scope).href)
-    )).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(
+        STATIC_FILES.map((file) => new URL(file, self.registration.scope).href)
+      ))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-    )).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -38,10 +44,18 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.ok) {
             const responseCopy = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseCopy));
+            return networkResponse;
           }
-          return networkResponse;
+
+          return caches.match(event.request).then((cachedResponse) => {
+            return cachedResponse || caches.match(INDEX_URL);
+          });
         })
-        .catch(() => caches.match(event.request).then((cachedResponse) => cachedResponse || caches.match('./index.html')))
+        .catch(() => {
+          return caches.match(event.request).then((cachedResponse) => {
+            return cachedResponse || caches.match(INDEX_URL);
+          });
+        })
     );
     return;
   }
@@ -58,6 +72,8 @@ self.addEventListener('fetch', (event) => {
         const responseCopy = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseCopy));
         return networkResponse;
+      }).catch(() => {
+        return Response.error();
       });
     })
   );

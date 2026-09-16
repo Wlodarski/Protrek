@@ -49,23 +49,35 @@ function applyTheme(theme) {
 
 export async function initializeTheme() {
   const themeToggle = document.getElementById('themeToggle');
+  const status = document.getElementById('status');
   if (!themeToggle) return;
+
+  const updateStatus = (message, color) => {
+    if (!status) return;
+    status.style.color = color;
+    status.textContent = message;
+  };
 
   let theme = 'system';
   try {
     theme = await readTheme();
   } catch (error) {
-    console.warn('Impossible de charger la palette:', error);
+    const mes = 'Impossible de charger la palette:';
+    console.warn(mes, error);
+    updateStatus(`${mes} ${error}`, 'var(--status-error)');
   }
   applyTheme(theme);
 
   const cycleTheme = async () => {
     theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
     applyTheme(theme);
+    updateStatus(`Thème ${theme} activé`, 'var(--status-info)');
     try {
       await saveTheme(theme);
     } catch (error) {
-      console.warn('Impossible de conserver la palette:', error);
+      const mes = 'Impossible de conserver la palette:';
+      console.warn(mes, error);
+      updateStatus(`${mes} ${error}`, 'var(--status-error)');
     }
   };
 

@@ -71,7 +71,7 @@ export async function initializeTheme() {
   const cycleTheme = async () => {
     theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
     applyTheme(theme);
-    updateStatus(`Thème ${theme} activé`, 'var(--status-info)');
+    updateStatus(`Thème « ${theme} » activé`, 'var(--status-info)');
     try {
       await saveTheme(theme);
     } catch (error) {

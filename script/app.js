@@ -123,6 +123,31 @@ function buildCurrentTimeString() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
+function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
+  const warnings = [];
+  const calibrationKey = calibrationTime.slice(0, 16);
+  const currentKey = currentTime.slice(0, 16);
+  if (calibrationKey > currentKey) {
+    warnings.push('Avertissement : la date de calibration est dans le futur par rapport à l’heure actuelle.');
+  }
+
+  const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal)
+    ? rawData.validTimeLocal
+    : [];
+  if (forecastTimes.length === 0) return warnings.join('<br><br>');
+
+  const firstForecastKey = forecastTimes[0].slice(0, 16);
+  const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
+
+  if (calibrationKey < firstForecastKey) {
+    warnings.push('Avertissement : la calibration précède les prévisions téléchargées. Les conditions actuelles du fichier sont utilisées.');
+  }
+  if (calibrationKey > lastForecastKey) {
+    warnings.push('Avertissement : la calibration dépasse les prévisions téléchargées. La dernière prévision disponible est utilisée.');
+  }
+  return warnings.join('<br><br>');
+}
+
 async function computeResult() {
   const timeValue = timeInput.value;
   const calibrationAltitude = Number(altitudeInput.value);
@@ -140,6 +165,7 @@ async function computeResult() {
     updateForecastCoverage(rawData);
     const targetTimeStr = buildCurrentTimeString();
     const calTimeStr = buildTimeStringFromInput(timeValue);
+    const calibrationCoverageWarning = getCalibrationCoverageWarning(rawData, calTimeStr, targetTimeStr);
     const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
     const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
     const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
@@ -179,8 +205,12 @@ async function computeResult() {
         'La calibration précède les prévisions alors la correction se fonde aussi sur les conditions initiales.'
       );
     }
-    statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
-    statusEl.style.color = 'var(--status-success)';
+    if (calibrationCoverageWarning) {
+      statusEl.innerHTML = calibrationCoverageWarning;
+    } else {
+      statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
+    }
+    statusEl.style.color = calibrationCoverageWarning ? 'var(--status-info)' : 'var(--status-success)';
   } catch (error) {
     console.error(error);
     statusEl.textContent = `Erreur: ${error.message}`;

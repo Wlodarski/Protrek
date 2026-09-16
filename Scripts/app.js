@@ -8,7 +8,9 @@ import {
 } from './calculation.js';
 import { initializeApiKey } from './api_key_storage.js';
 import { fetchCombinedForecast } from './weather_client.js';
+import { initializeTheme } from './theme.js';
 
+await initializeTheme();
 await initializeApiKey();
 
 const STORAGE_KEYS = {
@@ -123,7 +125,7 @@ async function computeResult() {
   const currentAltitude = Number(currentAltitudeInput.value);
   if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
     statusEl.textContent = 'Veuillez remplir tous les champs.';
-    statusEl.style.color = '#fca5a5';
+    statusEl.style.color = 'var(--status-error)';
     resultValueEl.textContent = '-- m';
     resultDetailsEl.textContent = 'Aucune correction calculée.';
     return;
@@ -174,11 +176,11 @@ async function computeResult() {
       );
     }
     statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
-    statusEl.style.color = '#86efac';
+    statusEl.style.color = 'var(--status-success)';
   } catch (error) {
     console.error(error);
     statusEl.textContent = `Erreur: ${error.message}`;
-    statusEl.style.color = '#fca5a5';
+    statusEl.style.color = 'var(--status-error)';
     resultValueEl.textContent = '-- m';
     pressureMetricEl.textContent = '-- m';
     thermalMetricEl.textContent = '-- m';
@@ -197,7 +199,7 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!timeInput.value || !altitudeInput.value || !currentAltitudeInput.value) {
     statusEl.textContent = 'Veuillez remplir tous les champs.';
-    statusEl.style.color = '#fca5a5';
+    statusEl.style.color = 'var(--status-error)';
     return;
   }
   localStorage.setItem(STORAGE_KEYS.time, timeInput.value);
@@ -208,16 +210,16 @@ form.addEventListener('submit', async (event) => {
 
 refreshBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Rafraîchissement des prévisions...';
-  statusEl.style.color = '#93c5fd';
+  statusEl.style.color = 'var(--status-info)';
   try {
     const forecast = await fetchCombinedForecast();
     localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
     updateForecastCoverage(forecast);
     statusEl.textContent = 'Prévisions actualisées. Vous pouvez recalculer.';
-    statusEl.style.color = '#86efac';
+    statusEl.style.color = 'var(--status-success)';
   } catch (error) {
     statusEl.textContent = error.message || 'Impossible de rafraîchir les prévisions.';
-    statusEl.style.color = '#fca5a5';
+    statusEl.style.color = 'var(--status-error)';
   }
 });
 

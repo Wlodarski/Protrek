@@ -61,6 +61,12 @@ function formatForecastTime(timeString, onlyHour = false) {
     : { dateStyle: 'full', timeStyle: 'short' }).format(date);
 }
 
+function formatSignedMetric(value, decimals = 0) {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const magnitude = Math.abs(value);
+  return `${sign}${magnitude.toFixed(decimals)} m`;
+}
+
 function getStoredLocation() {
   try {
     const location = JSON.parse(localStorage.getItem(USER_LOCATION_STORAGE_KEY));
@@ -180,19 +186,26 @@ async function computeResult() {
 
     const hTheoreticalCal = calculateAltitudeFromPressure(pWeatherCal);
     const hTheoreticalCurrent = calculateAltitudeFromPressure(pWeatherCurrent);
-    const weatherDrift = calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent);
+    const pressureDrift = calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent);
     const thermalDrift = calculateThermalDrift(tempWeatherCal, tempWeatherCurrent, hTheoreticalCal, hTheoreticalCurrent);
     const humidityDrift = calculateHumidityDrift(humidityCal, humidityCurrent, hTheoreticalCurrent);
-    const trueAltitude = currentAltitude - weatherDrift + thermalDrift + humidityDrift;
+
+    // Pressure drift is subtracted because a higher pressure corresponds to a lower altitude.
+    // Thermal and humidity drifts are then added as corrective offsets.
+    const pressureContribution = -pressureDrift;
+    const thermalContribution = thermalDrift;
+    const humidityContribution = humidityDrift;
+    const totalAltitudeCorrection = pressureContribution + thermalContribution + humidityContribution;
+    const trueAltitude = currentAltitude + totalAltitudeCorrection;
 
     resultValueEl.textContent = `${Math.round(trueAltitude)} m`;
-    pressureMetricEl.textContent = `${weatherDrift > 0 ? '+' : ''}${Math.round(weatherDrift)} m`;
-    thermalMetricEl.textContent = `${thermalDrift > 0 ? '+' : ''}${thermalDrift.toFixed(1)} m`;
-    humidityMetricEl.textContent = `${humidityDrift > 0 ? '+' : ''}${humidityDrift.toFixed(1)} m`;
+    pressureMetricEl.textContent = formatSignedMetric(pressureContribution, 1);
+    thermalMetricEl.textContent = formatSignedMetric(thermalContribution, 1);
+    humidityMetricEl.textContent = formatSignedMetric(humidityContribution, 1);
     const detailsText = document.createElement('small');
     detailsText.append(
       'La correction totale estimée est de ',
-      Object.assign(document.createElement('strong'), { textContent: `${Math.round(trueAltitude - currentAltitude)} m` }),
+      Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
       ' par rapport à l’affichage actuel. La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '.'

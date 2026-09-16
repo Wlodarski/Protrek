@@ -105,6 +105,10 @@ function updateForecastCoverage(rawData) {
 }
 
 function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(timeValue)) {
+    return `${timeValue}:00`;
+  }
+
   const [hours, minutes] = timeValue.split(':').map(Number);
   const date = new Date(referenceDate.getTime());
   date.setHours(hours, minutes, 0, 0);
@@ -135,7 +139,7 @@ async function computeResult() {
     const rawData = await loadForecast();
     updateForecastCoverage(rawData);
     const targetTimeStr = buildCurrentTimeString();
-    const calTimeStr = buildTimeStringFromInput(timeValue, new Date());
+    const calTimeStr = buildTimeStringFromInput(timeValue);
     const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
     const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
     const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
@@ -190,7 +194,11 @@ async function computeResult() {
 }
 
 function loadSavedValues() {
-  timeInput.value = localStorage.getItem(STORAGE_KEYS.time) || '09:04';
+  const savedTime = localStorage.getItem(STORAGE_KEYS.time);
+  const calibrationTime = savedTime
+    ? buildTimeStringFromInput(savedTime).slice(0, 16)
+    : buildTimeStringFromInput('09:04').slice(0, 16);
+  timeInput.value = calibrationTime;
   altitudeInput.value = localStorage.getItem(STORAGE_KEYS.altitude) || '32';
   currentAltitudeInput.value = localStorage.getItem(STORAGE_KEYS.currentAltitude) || '0';
 }

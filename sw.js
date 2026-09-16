@@ -1,4 +1,4 @@
-const CACHE_NAME = 'protrek-v4';
+const CACHE_NAME = 'protrek-v5';
 const STATIC_FILES = [
   './index.html',
   './manifest.json',

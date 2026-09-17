@@ -103,9 +103,8 @@
     }
 
     .panel {
-      width: 50vmax;
+      width: clamp(480px, 50vmax, 800px);
       max-width: 99vw;
-      min-width: 480px;
       margin-top: 2vw;
       margin-bottom: 1vw;
       background: var(--panel-surface);

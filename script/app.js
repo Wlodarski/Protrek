@@ -7,7 +7,6 @@ import {
   calculateHumidityDrift
 } from './calculation.js';
 import { initializeApiKey } from './api_key_storage.js';
-import { fetchCombinedForecast } from './weather_client.js';
 import { initializeTheme } from './theme.js';
 
 await initializeTheme();
@@ -263,6 +262,7 @@ refreshBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Rafraîchissement des prévisions...';
   statusEl.style.color = 'var(--status-info)';
   try {
+    const { fetchCombinedForecast } = await import('./weather_client.js');
     const forecast = await fetchCombinedForecast();
     localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
     updateForecastCoverage(forecast);
@@ -275,4 +275,3 @@ refreshBtn.addEventListener('click', async () => {
 });
 
 loadSavedValues();
-computeResult();

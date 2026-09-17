@@ -1,4 +1,4 @@
-const CACHE_NAME = 'protrek-v7valide';
+const CACHE_NAME = 'protrek-v8';
 const STATIC_FILES = [
   './index.html',
   './manifest.json',
@@ -7,6 +7,8 @@ const STATIC_FILES = [
   './script/calculation.js',
   './script/api_key_storage.js',
   './script/weather_client.js',
+  './script/theme.js',
+  './script/version.js',
   './script/protrek_forecast.json',
   './icons/protrek-192.svg',
   './icons/protrek-512.svg'

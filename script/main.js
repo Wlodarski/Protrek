@@ -1,18 +1,17 @@
-import './app.js';
-import { getVersionLabel } from './version.js';
-
 const versionEl = document.getElementById('version');
 
-function updateVersion() {
-	if (!versionEl) return;
-	versionEl.textContent = getVersionLabel();
-}
-
-updateVersion();
-
 if ('serviceWorker' in navigator) {
-	window.addEventListener('load', () => {
-		navigator.serviceWorker.register('./sw.js')
-			.catch((error) => console.error('Échec de l’enregistrement du service worker:', error));
-	});
+	navigator.serviceWorker.register('./sw.js')
+		.catch((error) => console.error('Échec de l’enregistrement du service worker:', error));
 }
+
+import('./version.js')
+	.then(({ getVersionLabel }) => {
+		if (versionEl) versionEl.textContent = getVersionLabel();
+	})
+	.catch((error) => {
+		console.error('Échec du chargement de version.js:', error);
+		if (versionEl) versionEl.textContent = 'version indisponible';
+	});
+
+import('./app.js').catch((error) => console.error('Échec de l’initialisation de l’application:', error));

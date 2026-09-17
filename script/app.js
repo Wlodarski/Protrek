@@ -143,7 +143,7 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
 
   if (calibrationKey < firstForecastKey) {
-    warnings.push('Avertissement : la calibration précède les prévisions téléchargées. Les conditions actuelles du fichier sont utilisées.');
+    warnings.push('Avertissement : la calibration précède les prévisions téléchargées. Les conditions actuelles sont utilisées.');
   }
   if (calibrationKey > lastForecastKey) {
     warnings.push('Avertissement : la calibration dépasse les prévisions téléchargées. La dernière prévision disponible est utilisée.');

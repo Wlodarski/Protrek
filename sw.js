@@ -9,7 +9,6 @@ const STATIC_FILES = [
   './script/weather_client.js',
   './script/theme.js',
   './script/version.js',
-  './script/protrek_forecast.json',
   './icons/protrek-192.svg',
   './icons/protrek-512.svg'
 ];

@@ -17,7 +17,6 @@ const STORAGE_KEYS = {
   altitude: 'protrek.calibration.altitude',
   currentAltitude: 'protrek.current.altitude'
 };
-const FORECAST_PATH = './script/protrek_forecast.json';
 const FORECAST_STORAGE_KEY = 'protrek_forecast';
 const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 
@@ -44,9 +43,8 @@ async function loadForecast() {
     }
   }
 
-  const response = await fetch(FORECAST_PATH, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Impossible de charger ${FORECAST_PATH}`);
-  const forecast = await response.json();
+  const { fetchCombinedForecast } = await import('./weather_client.js');
+  const forecast = await fetchCombinedForecast();
   localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
   return forecast;
 }

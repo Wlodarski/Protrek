@@ -45,6 +45,7 @@ function applyTheme(theme) {
   document.documentElement.toggleAttribute('data-theme', theme !== 'system');
   if (theme !== 'system') document.documentElement.dataset.theme = theme;
   document.getElementById('themeToggle')?.setAttribute('aria-label', `Palette ${theme}`);
+  document.getElementById('theme').textContent = theme == 'system' ? '' : theme;
 }
 
 export async function initializeTheme() {

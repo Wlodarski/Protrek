@@ -10,8 +10,8 @@ function isValidLocation(location) {
     && Number.isFinite(location.latitude)
     && Number.isFinite(location.longitude)
     && Number.isFinite(location.accuracy)
-    && isFinite(location.altitude) // facultatif donc null accepté
-    && isFinite(location.altitudeAccuracy) // facultatif donc null accepté
+    && (location.altitude === null || Number.isFinite(location.altitude))
+    && (location.altitudeAccuracy === null || Number.isFinite(location.altitudeAccuracy))
     && location.latitude >= -90
     && location.latitude <= 90
     && location.longitude >= -180
@@ -59,7 +59,7 @@ function getUserGeocode() {
         console.warn('Position utilisateur indisponible, position par défaut utilisée:', error.message);
         resolve(storedLocation || getDefaultLocation());
       },
-      { enableHighAccuracy: false, maximumAge: 300000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 300000, timeout: 10000 }
     );
   });
 }

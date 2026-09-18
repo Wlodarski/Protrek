@@ -76,21 +76,56 @@ function getStoredLocation() {
 }
 
 function prependForecastLocation(location) {
-  if (!location) return;
-  forecastCoverageTextEl.prepend(
+  // 1. Validation de sécurité initiale
+  if (!location || !forecastCoverageTextEl) return;
+
+  // 2. Extraction et normalisation des données (Fallback si null/undefined)
+  const hasLatLon = Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
+  const latLonText = hasLatLon
+    ? `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+    : 'Coordonnées indisponibles';
+
+  const accuracyText = Number.isFinite(location.accuracy)
+    ? `${location.accuracy} m`
+    : 'indéterminée';
+
+  const altitudeText = Number.isFinite(location.altitude)
+    ? `${location.altitude} m`
+    : 'indisponible';
+
+  const altitudeAccuracyText = Number.isFinite(location.altitudeAccuracy)
+    ? `${location.altitudeAccuracy} m`
+    : 'indéterminée';
+
+  // 3. Nettoyage du conteneur pour éviter les duplications lors des rafraîchissements
+  // On ne garde que les éléments de prévisions textuels s'il y en a (gestion dynamique)
+  const existingPrefix = forecastCoverageTextEl.querySelector('.location-prefix');
+  if (existingPrefix) {
+    existingPrefix.remove();
+  }
+
+  // 4. Construction sécurisée du fragment DOM
+  const containerSpan = document.createElement('span');
+  containerSpan.classList.add('location-prefix');
+
+  containerSpan.append(
     document.createTextNode('Prévisions centrées sur '),
-    Object.assign(document.createElement('strong'), {
-      textContent: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
-    }),
-    document.createTextNode(' dans un rayon de '),
-    Object.assign(document.createElement('strong'), {
-      textContent: Number.isFinite(location.altitudeAccuracy) ?
-        `${location.accuracy.toFixed(1)} m et de ${location.altitudeAccuracy.toFixed(1)} m pour l'altitude` :
-        `${location.accuracy.toFixed(1)} m`,
-    }),
+    Object.assign(document.createElement('strong'), { textContent: latLonText }),
+    document.createTextNode(' avec une précision de '),
+    Object.assign(document.createElement('strong'), { textContent: accuracyText }),
+    document.createTextNode(' et '),
+    Object.assign(document.createElement('strong'), { textContent: altitudeAccuracyText }),
+    document.createTextNode(' pour l’altitude de '),
+    Object.assign(document.createElement('strong'), { textContent: altitudeText }),
+    document.createTextNode('.'),
+    document.createElement('br'),
     document.createElement('br')
   );
+
+  // 5. Insertion propre en tête du conteneur cible
+  forecastCoverageTextEl.prepend(containerSpan);
 }
+
 
 function updateForecastCoverage(rawData) {
   const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
@@ -102,13 +137,16 @@ function updateForecastCoverage(rawData) {
     return;
   }
   forecastCoverageTextEl.replaceChildren(
-    document.createTextNode('Conditions initiales du '),
+    document.createTextNode('Conditions initiales en date du '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(currentTime) }),
-    document.createElement('br'),
-    document.createTextNode('Prévisions du '),
+    document.createTextNode('. '),
+    //document.createElement('br'),
+   // document.createElement('br'),
+    document.createTextNode('Prévisions à partir du '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[0]) }),
-    document.createTextNode(' au '),
-    Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[forecastTimes.length - 1]) })
+    document.createTextNode(' jusqu’au '),
+    Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[forecastTimes.length - 1]) }),
+    document.createTextNode('.')
   );
   prependForecastLocation(location);
 }
@@ -146,10 +184,14 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   if (forecastTimes.length === 0) return warnings.join('<br><br>');
 
   const firstForecastKey = forecastTimes[0].slice(0, 16);
+  const InitialTime = rawData.current.validTimeLocal;
   const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
 
+  if (calibrationKey < InitialTime) {
+    warnings.push('<span style="color: var(--status-error);">Anomalie importante : la calibration précède les conditions initiales !</span>');
+  }
   if (calibrationKey < firstForecastKey) {
-    warnings.push('Avertissement : la calibration précède les prévisions téléchargées. Les conditions actuelles sont utilisées.');
+    warnings.push('Avertissement : la calibration précède les prévisions téléchargées. Les conditions initiales sont utilisées.');
   }
   if (calibrationKey > lastForecastKey) {
     warnings.push('Avertissement : la calibration dépasse les prévisions téléchargées. La dernière prévision disponible est utilisée.');
@@ -250,13 +292,13 @@ async function computeResult() {
       '.'
     );
     resultDetailsEl.replaceChildren(detailsText);
-    if (usesCurrentConditions) {
+    /* if (usesCurrentConditions) {
       forecastCoverageTextEl.append(
         document.createElement('br'),
         document.createElement('br'),
-        'La calibration précède les prévisions alors la correction se fonde aussi sur les conditions initiales.'
+        'La calibration précède les prévisions alors la correction suppose qu’elle a été effectuée aux conditions initiales.'
       );
-    }
+    } */
     if (calibrationCoverageWarning) {
       statusEl.innerHTML = calibrationCoverageWarning;
     } else {

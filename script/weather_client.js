@@ -39,7 +39,7 @@ function getStoredLocation() {
  */
 function getDefaultLocation() {
   const [latitude, longitude, altitude] = DEFAULT_GEOCODE.split(',').map(Number);
-  return { latitude, longitude, altitude, accuracy: 0, altitudeAccuracy: null };
+  return { latitude, longitude, altitude, accuracy: null, altitudeAccuracy: null };
 }
 
 /**
@@ -107,8 +107,6 @@ function getUserGeocode() {
 
           if (estimatedAltitude !== null) {
             location.altitude = estimatedAltitude;
-            // On applique une précision théorique standard pour les modèles numériques de terrain (~30m)
-            location.altitudeAccuracy = 30;
           }
         }
 

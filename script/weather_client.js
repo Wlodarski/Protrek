@@ -2,13 +2,16 @@ import { getApiKey } from './api_key_storage.js';
 
 const BASE_API_URL = 'https://api.weather.com/v3/wx/forecast/hourly/3day';
 const CURRENT_API_URL = 'https://api.weather.com/v3/wx/observations/current';
-const DEFAULT_GEOCODE = '45.58,-73.54';
+const DEFAULT_GEOCODE = '45.58,-73.54,0';
 const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 
 function isValidLocation(location) {
   return location
     && Number.isFinite(location.latitude)
     && Number.isFinite(location.longitude)
+    && Number.isFinite(location.accuracy)
+    && isFinite(location.altitude) // facultatif donc null accepté
+    && isFinite(location.altitudeAccuracy) // facultatif donc null accepté
     && location.latitude >= -90
     && location.latitude <= 90
     && location.longitude >= -180
@@ -25,8 +28,8 @@ function getStoredLocation() {
 }
 
 function getDefaultLocation() {
-  const [latitude, longitude] = DEFAULT_GEOCODE.split(',').map(Number);
-  return { latitude, longitude };
+  const [latitude, longitude, altitude] = DEFAULT_GEOCODE.split(',').map(Number);
+  return { latitude, longitude, altitude };
 }
 
 function getUserGeocode() {
@@ -38,7 +41,13 @@ function getUserGeocode() {
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const location = { latitude: coords.latitude, longitude: coords.longitude };
+        const location = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          altitude: coords.altitude,
+          accuracy: coords.accuracy,
+          altitudeAccuracy: coords.altitudeAccuracy
+        };
         if (!isValidLocation(location)) {
           resolve(storedLocation || getDefaultLocation());
           return;

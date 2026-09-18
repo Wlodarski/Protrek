@@ -48,23 +48,36 @@ function getDefaultLocation() {
  */
 async function fetchFallbackAltitude(lat, lon) {
   try {
-    const response = await fetch(`https://open-meteo.com?latitude=${lat}&longitude=${lon}`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // URL absolue et propre
+    const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+    
+    // Sécurité : On vérifie que le serveur renvoie bien du JSON et non de l'HTML (ex: <!doctype ...)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new TypeError("Le serveur n'a pas renvoyé un format JSON valide.");
+    }
     
     const data = await response.json();
-
-    // Vérification que 'elevation' existe et contient au moins un élément
+    
+    // Extraction sécurisée du tableau d'élévation
     if (data && Array.isArray(data.elevation) && data.elevation.length > 0) {
-      const elevationValue = data.elevation[0]; // Extraction du nombre (ex: 34.0)
+      const elevationValue = data.elevation[0];
       console.log(`Altitude estimée via API tierce : ${elevationValue}m`);
       return elevationValue;
     }
+    
     return null;
   } catch (err) {
     console.warn("Échec de la récupération de l'altitude de secours :", err.message);
     return null;
   }
 }
+
 
 
 /**

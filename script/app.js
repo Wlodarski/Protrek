@@ -212,40 +212,46 @@ function buildCurrentTimeString() {
 }
 
 function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
-  const warnings = [];
   const calibrationKey = calibrationTime.slice(0, 16);
   const currentKey = currentTime.slice(0, 16);
+
   if (calibrationKey > currentKey) {
-    warnings.push('Avertissement : la date de calibration est dans le futur par rapport à l’heure actuelle.');
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'La date de calibration est dans le futur par rapport à l’heure actuelle.', type: 'warn' }
+    }));
   }
 
-  const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal)
-    ? rawData.validTimeLocal
-    : [];
-  if (forecastTimes.length === 0) return warnings.join('<br><br>');
+  const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
+  if (forecastTimes.length === 0) return;
 
   const firstForecastKey = forecastTimes[0].slice(0, 16);
   const InitialTime = rawData.current.validTimeLocal;
   const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
 
   if (calibrationKey < InitialTime) {
-    warnings.push('<span style="color: var(--status-error);">Anomalie importante : la calibration précède les conditions initiales !</span>');
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'Anomalie importante : la calibration précède les conditions initiales !', type: 'warn' }
+    }));
   }
   if (calibrationKey < firstForecastKey) {
-    warnings.push('Avertissement : la calibration précède les prévisions téléchargées. Les conditions initiales sont utilisées.');
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'La calibration précède les prévisions téléchargées. Les conditions initiales sont utilisées.', type: 'info' }
+    }));
   }
   if (calibrationKey > lastForecastKey) {
-    warnings.push('Avertissement : la calibration dépasse les prévisions téléchargées. La dernière prévision disponible est utilisée.');
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'La calibration dépasse les prévisions téléchargées. La dernière prévision disponible est utilisée.', type: 'warn' }
+    }));
   }
-  return warnings.join('<br><br>');
 }
+
 
 async function computeResult() {
   const timeValue = timeInput.value;
   const calibrationAltitude = Number(altitudeInput.value);
   const currentAltitude = Number(currentAltitudeInput.value);
 
-  // 1. Validation des champs via le journal de bord
+  // 1. Validation initiale des champs via le journal de bord
   if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: { message: 'Calcul impossible : Veuillez remplir tous les champs du formulaire.', type: 'warn' }
@@ -258,18 +264,17 @@ async function computeResult() {
   try {
     const rawData = await loadForecast();
     updateForecastCoverage(rawData);
-    
+
     const targetTimeStr = buildCurrentTimeString();
     const calTimeStr = buildTimeStringFromInput(timeValue);
-    const calibrationCoverageWarning = getCalibrationCoverageWarning(rawData, calTimeStr, targetTimeStr);
-    
+
     const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
     const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
     const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
     const tempWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'temperature');
     const humidityCal = getValueAtTime(rawData, calTimeStr, 'relativeHumidity');
     const humidityCurrent = getValueAtTime(rawData, targetTimeStr, 'relativeHumidity');
-    
+
     if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent]
       .some((value) => value === null || value === undefined)) {
       throw new Error('Données météo manquantes ou indisponibles pour les heures demandées.');
@@ -326,7 +331,7 @@ async function computeResult() {
     pressureMetricEl.textContent = formatSignedMetric(pressureContribution, 1);
     thermalMetricEl.textContent = formatSignedMetric(thermalContribution, 1);
     humidityMetricEl.textContent = formatSignedMetric(humidityContribution, 1);
-    
+
     const detailsText = document.createElement('small');
     detailsText.append(
       'La correction totale estimée est de ',
@@ -342,31 +347,27 @@ async function computeResult() {
     resultDetailsEl.replaceChildren(detailsText);
 
     // 7. NETTOYAGE ET CONFIRMATION DES MÉTRIQUES
-    if (calibrationCoverageWarning) {
-      const cleanWarning = calibrationCoverageWarning.replace(/<[^>]*>/g, '');
-      window.dispatchEvent(new CustomEvent('gps-status', {
-        detail: { message: cleanWarning, type: 'warn' }
-      }));
-    } else {
-      // Étape A : On vide l'intégralité des messages de chargement précédents
-      if (statusEl) statusEl.replaceChildren();
-      
-      // Étape B : On dépose l'unique confirmation de succès et de mise à jour des métriques
-      window.dispatchEvent(new CustomEvent('gps-status', {
-        detail: { 
-          message: `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`, 
-          type: 'success' 
-        }
-      }));
-    }
+    // Étape A : On vide l'historique de chargement précédent du panneau statusEl
+    if (statusEl) statusEl.replaceChildren();
+
+    // Étape B : On lance l'analyse de couverture (elle enverra d'elle-même les avertissements au statut si nécessaire)
+    getCalibrationCoverageWarning(rawData, calTimeStr, targetTimeStr);
+
+    // Étape C : On ajoute le message de confirmation final pour valider la mise à jour
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: {
+        message: `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`,
+        type: 'success'
+      }
+    }));
   } catch (error) {
     console.error(error);
-    
-    // En cas d'échec technique, on conserve l'erreur bien en évidence
+
+    // En cas d'échec, on ajoute la description de l'erreur dans les logs pour guider l'utilisateur
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: { message: `Échec du calcul : ${error.message}`, type: 'error' }
     }));
-    
+
     resultValueEl.textContent = '-- m';
     pressureMetricEl.textContent = '-- m';
     thermalMetricEl.textContent = '-- m';
@@ -374,6 +375,7 @@ async function computeResult() {
     resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué en raison d’une erreur technique.';
   }
 }
+
 
 
 function loadSavedValues() {

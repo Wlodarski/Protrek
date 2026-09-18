@@ -48,7 +48,7 @@ function getDefaultLocation() {
  */
 async function fetchFallbackAltitude(lat, lon) {
   try {
-    const response = await fetch(`https://open-meteo.com{lat}&longitude=${lon}`);
+    const response = await fetch(`https://open-meteo.com?latitude=${lat}&longitude=${lon}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
     const data = await response.json();

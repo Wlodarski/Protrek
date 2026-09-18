@@ -39,7 +39,7 @@ window.addEventListener('gps-status', (event) => {
   const { message, type } = event.detail;
 
   // 1. Alignement du conteneur sur vos variables de surface et d'ombrage
-  statusEl.style.maxHeight = '120px';
+  statusEl.style.maxHeight = '10rem';
   statusEl.style.overflowY = 'auto';
   statusEl.style.display = 'flex';
   statusEl.style.flexDirection = 'column';
@@ -54,8 +54,9 @@ window.addEventListener('gps-status', (event) => {
 
   // 2. Création de la ligne textuelle
   const logLine = document.createElement('div');
-  logLine.textContent = `• ${message}`;
+  logLine.textContent = message;
   logLine.style.lineHeight = '1.4';
+  logLine.style.marginBottom = '0.5rem';
 
   // 3. Attribution dynamique des couleurs de texte selon vos jetons de statut :root
   if (type === 'error') {

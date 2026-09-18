@@ -194,8 +194,40 @@ async function computeResult() {
     const humidityContribution = humidityDrift;
     const totalAltitudeCorrection = pressureContribution + thermalContribution + humidityContribution;
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
+    const deltaAlt = trueAltitude - calibrationAltitude;
 
-    resultValueEl.textContent = `${Math.round(trueAltitude)} m`;
+    // 1. Calcul de la différence de temps absolue totale en minutes
+    const calTimeMs = new Date(calTimeStr).getTime();
+    const nowTimeMs = Date.now();
+    const totalMinutes = Math.abs(Math.round((nowTimeMs - calTimeMs) / 60000));
+
+    // 2. Initialisation des API internationales de formatage
+    const rtf = new Intl.RelativeTimeFormat('fr-CA', { numeric: 'always' });
+    const listFormatter = new Intl.ListFormat('fr-CA', { style: 'long', type: 'conjunction' });
+
+    // 3. Extraction des composants (Jours, Heures, Minutes)
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+
+    const timeSegments = [];
+
+    // Formatage de chaque unité via l'API (en retirant le préfixe "dans ")
+    if (days > 0) {
+      timeSegments.push(rtf.format(days, 'day').replace(/^dans\s+/, ''));
+    }
+    if (hours > 0) {
+      timeSegments.push(rtf.format(hours, 'hour').replace(/^dans\s+/, ''));
+    }
+    // On affiche les minutes si elles sont présentes, ou si le delta total est de 0
+    if (minutes > 0 || timeSegments.length === 0) {
+      timeSegments.push(rtf.format(minutes, 'minute').replace(/^dans\s+/, ''));
+    }
+
+    // 4. Union des segments avec l'API internationale (ajoute automatiquement le "et")
+    const timeText = listFormatter.format(timeSegments);
+
+    resultValueEl.innerHTML = `${Math.round(trueAltitude)} m`;
     pressureMetricEl.textContent = formatSignedMetric(pressureContribution, 1);
     thermalMetricEl.textContent = formatSignedMetric(thermalContribution, 1);
     humidityMetricEl.textContent = formatSignedMetric(humidityContribution, 1);
@@ -205,7 +237,7 @@ async function computeResult() {
       Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
       ' par rapport à l’affichage actuel. La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
-      '.'
+      `. L'élévation a changé de ${deltaAlt.toFixed(1)} m en ${timeText}.`
     );
     resultDetailsEl.replaceChildren(detailsText);
     if (usesCurrentConditions) {

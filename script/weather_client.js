@@ -90,7 +90,37 @@ function getUserGeocode() {
   }
 
   return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
+    let watchId = null;
+    let timerId = null;
+    let bestLocation = null;
+
+    // Fonction de nettoyage des écouteurs pour éviter les fuites de mémoire
+    const cleanUp = () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (timerId !== null) clearTimeout(timerId);
+    };
+
+    // Sécurité : Si le GPS met trop de temps à se stabiliser, on livre la meilleure position trouvée
+    timerId = setTimeout(async () => {
+      cleanUp();
+      console.warn("Temps de stabilisation GPS écoulé (Timeout).");
+      
+      if (bestLocation) {
+        // Si l'altitude est toujours manquante à la fin du chrono, appel à l'API de secours
+        if (bestLocation.altitude === null || bestLocation.altitude === undefined) {
+          const estimatedAltitude = await fetchFallbackAltitude(bestLocation.latitude, bestLocation.longitude);
+          if (estimatedAltitude !== null) {
+            bestLocation.altitude = estimatedAltitude;
+            //bestLocation.altitudeAccuracy = 30;
+          }
+        }
+        resolve(bestLocation);
+      } else {
+        resolve(storedLocation || getDefaultLocation());
+      }
+    }, 12000); // On laisse 12 secondes maximum au GPS pour se stabiliser
+
+    watchId = navigator.geolocation.watchPosition(
       async ({ coords }) => {
         const location = {
           latitude: coords.latitude,
@@ -100,33 +130,40 @@ function getUserGeocode() {
           altitudeAccuracy: coords.altitudeAccuracy
         };
 
-        // Si l'altitude est absente, on tente de la récupérer via l'API de secours
-        if (location.altitude === null || location.altitude === undefined) {
-          console.info("Altitude GPS indisponible. Interrogation de l'API de secours...");
-          const estimatedAltitude = await fetchFallbackAltitude(location.latitude, location.longitude);
+        console.log(`[GPS] Nouvelle mesure - Précision H: ${location.accuracy}m, V: ${location.altitudeAccuracy ?? 'null'}m`);
 
-          if (estimatedAltitude !== null) {
-            location.altitude = estimatedAltitude;
+        // Stratégie de sélection : On garde la position si elle est plus précise horizontalement
+        if (!bestLocation || location.accuracy < bestLocation.accuracy) {
+          bestLocation = location;
+        }
+
+        // SEUIL DE STABILISATION IDÉAL :
+        // Si la précision horizontale est excellente (< 15m) ET qu'on a enfin l'altitude matérielle
+        if (location.accuracy <= 15 && location.altitude !== null && location.altitudeAccuracy !== null) {
+          console.info("Signal GPS stabilisé avec succès !");
+          cleanUp();
+          
+          if (isValidLocation(location)) {
+            localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
+            resolve(location);
+          } else {
+            resolve(storedLocation || getDefaultLocation());
           }
         }
-
-        if (!isValidLocation(location)) {
-          resolve(storedLocation || getDefaultLocation());
-          return;
-        }
-
-        localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
-        resolve(location);
       },
       (error) => {
-        console.warn('Position utilisateur indisponible, position par défaut utilisée:', error.message);
-        resolve(storedLocation || getDefaultLocation());
+        console.warn('Erreur de lecture GPS en continu:', error.message);
+        // On ne coupe pas immédiatement au premier sursaut d'erreur, on laisse le timeout gérer la fin
       },
-      // maximumAge: 0 force le matériel à chercher une nouvelle coordonnée plutôt qu'un vieux cache réseau
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      { 
+        enableHighAccuracy: true, 
+        maximumAge: 0, // Interdiction stricte d'utiliser une vieille coordonnée du cache
+        timeout: 10000 
+      }
     );
   });
 }
+
 
 /**
  * Construit l'URL d'appel pour l'API Weather.com avec les paramètres requis.

@@ -153,9 +153,7 @@ async function buildApiUrl(baseUrl, geocode) {
  * Effectue la requête HTTP fetch et valide la réponse JSON.
  */
 async function fetchJson(baseUrl, label, geocode) {
-  const url = await buildApiUrl(baseUrl, geocode);
-  console.log(`[Protrek Débogage] Appel de ${label} à l'URL :`, url); // <- AJOUTEZ CECI
-  
+  const url = await buildApiUrl(baseUrl, geocode);  
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
   return response.json();

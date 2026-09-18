@@ -1,7 +1,7 @@
 import { getApiKey } from './api_key_storage.js';
 
-const BASE_API_URL = 'https://weather.com';
-const CURRENT_API_URL = 'https://weather.com';
+const BASE_API_URL = 'https://api.weather.com/v3/wx/forecast/hourly/3day';
+const CURRENT_API_URL = 'https://api.weather.com/v3/wx/observations/current';
 const DEFAULT_GEOCODE = '45.58,-73.54,0';
 const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 

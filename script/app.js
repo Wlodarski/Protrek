@@ -82,10 +82,11 @@ function prependForecastLocation(location) {
     Object.assign(document.createElement('strong'), {
       textContent: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
     }),
-    document.createTextNode('dans un rayon de '),
+    document.createTextNode(' dans un rayon de '),
     Object.assign(document.createElement('strong'), {
       textContent: Number.isFinite(location.altitudeAccuracy) ?
-        `${location.accuracy} m et de ${location.altitudeAccuracy} m pour l'altitude` : `${location.accuracy} m`,
+        `${location.accuracy.toFixed(1)} m et de ${location.altitudeAccuracy.toFixed(1)} m pour l'altitude` :
+        `${location.accuracy.toFixed(1)} m`,
     }),
     document.createElement('br')
   );

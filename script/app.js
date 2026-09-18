@@ -235,9 +235,13 @@ async function computeResult() {
     detailsText.append(
       'La correction totale estimée est de ',
       Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
-      ' par rapport à l’affichage actuel. La pression atmosphérique estimée au niveau de la mer est de ',
+      ' par rapport à l’affichage actuel. ', 
+      'L’élévation a changé de ',
+       Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
+      '. ',
+      'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
-      `. L'élévation a changé de ${deltaAlt.toFixed(1)} m en ${timeText}.`
+      '.'
     );
     resultDetailsEl.replaceChildren(detailsText);
     if (usesCurrentConditions) {

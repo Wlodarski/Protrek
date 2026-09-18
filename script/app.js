@@ -86,15 +86,15 @@ function prependForecastLocation(location) {
     : 'Coordonnées indisponibles';
 
   const accuracyText = Number.isFinite(location.accuracy)
-    ? `${location.accuracy} m`
+    ? `${Math.round(location.accuracy)} m`
     : 'indéterminée';
 
   const altitudeText = Number.isFinite(location.altitude)
-    ? `${location.altitude} m`
+    ? `${Math.round(location.altitude)} m`
     : 'indisponible';
 
   const altitudeAccuracyText = Number.isFinite(location.altitudeAccuracy)
-    ? `${location.altitudeAccuracy} m`
+    ? `${Math.round(location.altitudeAccuracy)} m`
     : 'indéterminée';
 
   // 3. Nettoyage du conteneur pour éviter les duplications lors des rafraîchissements
@@ -115,9 +115,9 @@ function prependForecastLocation(location) {
     Object.assign(document.createElement('strong'), { textContent: accuracyText }),
     document.createTextNode(' et '),
     Object.assign(document.createElement('strong'), { textContent: altitudeAccuracyText }),
-    document.createTextNode(' pour l’altitude de '),
+    document.createTextNode(' à '),
     Object.assign(document.createElement('strong'), { textContent: altitudeText }),
-    document.createTextNode('.'),
+    document.createTextNode(' d’élévation.'),
     document.createElement('br'),
     document.createElement('br')
   );

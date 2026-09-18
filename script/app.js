@@ -82,6 +82,11 @@ function prependForecastLocation(location) {
     Object.assign(document.createElement('strong'), {
       textContent: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
     }),
+    document.createTextNode('dans un rayon de '),
+    Object.assign(document.createElement('strong'), {
+      textContent: Number.isFinite(location.altitudeAccuracy) ?
+        `${location.accuracy} m et de ${location.altitudeAccuracy} m pour l'altitude` : `${location.accuracy} m`,
+    }),
     document.createElement('br')
   );
 }
@@ -235,9 +240,9 @@ async function computeResult() {
     detailsText.append(
       'La correction totale estimée est de ',
       Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
-      ' par rapport à l’affichage actuel. ', 
+      ' par rapport à l’affichage actuel. ',
       'L’élévation a changé de ',
-       Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
+      Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
       '. ',
       'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),

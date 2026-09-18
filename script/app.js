@@ -33,6 +33,50 @@ const humidityMetricEl = document.getElementById('humidityMetric');
 const refreshBtn = document.getElementById('refreshBtn');
 const forecastCoverageTextEl = document.getElementById('forecastCoverageText');
 
+// Écouteur d'événements pour transformer le statut en journal de bord défilant thémé
+window.addEventListener('gps-status', (event) => {
+  if (!statusEl) return;
+  const { message, type } = event.detail;
+
+  // 1. Alignement du conteneur sur vos variables de surface et d'ombrage
+  statusEl.style.maxHeight = '120px';
+  statusEl.style.overflowY = 'auto';
+  statusEl.style.display = 'flex';
+  statusEl.style.flexDirection = 'column';
+  statusEl.style.gap = '4px';
+  statusEl.style.padding = '10px';
+  statusEl.style.fontSize = '0.85rem';
+  statusEl.style.textAlign = 'left';
+  //statusEl.style.backgroundColor = 'var(--metric-surface)';
+  //statusEl.style.border = '1px solid var(--panel-2)';
+  //statusEl.style.borderRadius = '6px';
+  //statusEl.style.boxShadow = 'inset 0 2px 4px var(--shadow)';
+
+  // 2. Création de la ligne textuelle
+  const logLine = document.createElement('div');
+  logLine.textContent = `• ${message}`;
+  logLine.style.lineHeight = '1.4';
+
+  // 3. Attribution dynamique des couleurs de texte selon vos jetons de statut :root
+  if (type === 'error') {
+    logLine.style.color = 'var(--status-error)';
+  } else if (type === 'warn') {
+    logLine.style.color = 'var(--status-warning, #f39c12)'; // Fallback si non déclarée
+  } else if (type === 'success') {
+    // Équilibre entre --status-success (light) et --success (dark)
+    logLine.style.color = 'var(--status-success, var(--success))';
+    logLine.style.fontWeight = '600';
+  } else {
+    // Couleur d'information ou textuelle par défaut
+    logLine.style.color = 'var(--status-info, var(--text))';
+  }
+
+  // 4. Injection et défilement
+  statusEl.appendChild(logLine);
+  statusEl.scrollTop = statusEl.scrollHeight;
+});
+
+
 async function loadForecast() {
   const storedForecast = localStorage.getItem(FORECAST_STORAGE_KEY);
   if (storedForecast) {
@@ -126,7 +170,6 @@ function prependForecastLocation(location) {
   forecastCoverageTextEl.prepend(containerSpan);
 }
 
-
 function updateForecastCoverage(rawData) {
   const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
   const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
@@ -140,8 +183,6 @@ function updateForecastCoverage(rawData) {
     document.createTextNode('Conditions initiales en date du '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(currentTime) }),
     document.createTextNode('. '),
-    //document.createElement('br'),
-   // document.createElement('br'),
     document.createTextNode('Prévisions à partir du '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[0]) }),
     document.createTextNode(' jusqu’au '),
@@ -203,9 +244,12 @@ async function computeResult() {
   const timeValue = timeInput.value;
   const calibrationAltitude = Number(altitudeInput.value);
   const currentAltitude = Number(currentAltitudeInput.value);
+
+  // 1. Validation des champs via le journal de bord
   if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
-    statusEl.textContent = 'Veuillez remplir tous les champs.';
-    statusEl.style.color = 'var(--status-error)';
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'Calcul impossible : Veuillez remplir tous les champs du formulaire.', type: 'warn' }
+    }));
     resultValueEl.textContent = '-- m';
     resultDetailsEl.textContent = 'Aucune correction calculée.';
     return;
@@ -214,19 +258,21 @@ async function computeResult() {
   try {
     const rawData = await loadForecast();
     updateForecastCoverage(rawData);
+    
     const targetTimeStr = buildCurrentTimeString();
     const calTimeStr = buildTimeStringFromInput(timeValue);
     const calibrationCoverageWarning = getCalibrationCoverageWarning(rawData, calTimeStr, targetTimeStr);
+    
     const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
     const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
     const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
     const tempWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'temperature');
     const humidityCal = getValueAtTime(rawData, calTimeStr, 'relativeHumidity');
     const humidityCurrent = getValueAtTime(rawData, targetTimeStr, 'relativeHumidity');
-    const usesCurrentConditions = usesCurrentConditionsForTime(rawData, calTimeStr);
+    
     if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent]
       .some((value) => value === null || value === undefined)) {
-      throw new Error('La météo n’est pas disponible pour les heures demandées.');
+      throw new Error('Données météo manquantes ou indisponibles pour les heures demandées.');
     }
 
     const hTheoreticalCal = calculateAltitudeFromPressure(pWeatherCal);
@@ -244,16 +290,16 @@ async function computeResult() {
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
     const deltaAlt = trueAltitude - calibrationAltitude;
 
-    // 1. Calcul de la différence de temps absolue totale en minutes
+    // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
     const nowTimeMs = Date.now();
     const totalMinutes = Math.abs(Math.round((nowTimeMs - calTimeMs) / 60000));
 
-    // 2. Initialisation des API internationales de formatage
+    // 3. Initialisation des API internationales de formatage
     const rtf = new Intl.RelativeTimeFormat('fr-CA', { numeric: 'always' });
     const listFormatter = new Intl.ListFormat('fr-CA', { style: 'long', type: 'conjunction' });
 
-    // 3. Extraction des composants (Jours, Heures, Minutes)
+    // 4. Extraction des composants (Jours, Heures, Minutes)
     const days = Math.floor(totalMinutes / 1440);
     const hours = Math.floor((totalMinutes % 1440) / 60);
     const minutes = totalMinutes % 60;
@@ -272,13 +318,15 @@ async function computeResult() {
       timeSegments.push(rtf.format(minutes, 'minute').replace(/^dans\s+/, ''));
     }
 
-    // 4. Union des segments avec l'API internationale (ajoute automatiquement le "et")
+    // 5. Union des segments avec l'API internationale
     const timeText = listFormatter.format(timeSegments);
 
+    // 6. Mise à jour de l'affichage des résultats graphiques
     resultValueEl.innerHTML = `${Math.round(trueAltitude)} m`;
     pressureMetricEl.textContent = formatSignedMetric(pressureContribution, 1);
     thermalMetricEl.textContent = formatSignedMetric(thermalContribution, 1);
     humidityMetricEl.textContent = formatSignedMetric(humidityContribution, 1);
+    
     const detailsText = document.createElement('small');
     detailsText.append(
       'La correction totale estimée est de ',
@@ -292,30 +340,41 @@ async function computeResult() {
       '.'
     );
     resultDetailsEl.replaceChildren(detailsText);
-    /* if (usesCurrentConditions) {
-      forecastCoverageTextEl.append(
-        document.createElement('br'),
-        document.createElement('br'),
-        'La calibration précède les prévisions alors la correction suppose qu’elle a été effectuée aux conditions initiales.'
-      );
-    } */
+
+    // 7. NETTOYAGE ET CONFIRMATION DES MÉTRIQUES
     if (calibrationCoverageWarning) {
-      statusEl.innerHTML = calibrationCoverageWarning;
+      const cleanWarning = calibrationCoverageWarning.replace(/<[^>]*>/g, '');
+      window.dispatchEvent(new CustomEvent('gps-status', {
+        detail: { message: cleanWarning, type: 'warn' }
+      }));
     } else {
-      statusEl.textContent = `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`;
+      // Étape A : On vide l'intégralité des messages de chargement précédents
+      if (statusEl) statusEl.replaceChildren();
+      
+      // Étape B : On dépose l'unique confirmation de succès et de mise à jour des métriques
+      window.dispatchEvent(new CustomEvent('gps-status', {
+        detail: { 
+          message: `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`, 
+          type: 'success' 
+        }
+      }));
     }
-    statusEl.style.color = calibrationCoverageWarning ? 'var(--status-info)' : 'var(--status-success)';
   } catch (error) {
     console.error(error);
-    statusEl.textContent = `Erreur: ${error.message}`;
-    statusEl.style.color = 'var(--status-error)';
+    
+    // En cas d'échec technique, on conserve l'erreur bien en évidence
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: `Échec du calcul : ${error.message}`, type: 'error' }
+    }));
+    
     resultValueEl.textContent = '-- m';
     pressureMetricEl.textContent = '-- m';
     thermalMetricEl.textContent = '-- m';
     humidityMetricEl.textContent = '-- m';
-    resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué.';
+    resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué en raison d’une erreur technique.';
   }
 }
+
 
 function loadSavedValues() {
   const savedTime = localStorage.getItem(STORAGE_KEYS.time);
@@ -341,19 +400,25 @@ form.addEventListener('submit', async (event) => {
 });
 
 refreshBtn.addEventListener('click', async () => {
-  statusEl.textContent = 'Rafraîchissement des prévisions...';
-  statusEl.style.color = 'var(--status-info)';
+  // CORRECTION : On vide les anciens logs avant de lancer le nouveau cycle
+  if (statusEl) statusEl.replaceChildren();
+
   try {
     const { fetchCombinedForecast } = await import('./weather_client.js');
     const forecast = await fetchCombinedForecast();
     localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
     updateForecastCoverage(forecast);
-    statusEl.textContent = 'Prévisions actualisées. Vous pouvez recalculer.';
-    statusEl.style.color = 'var(--status-success)';
+
+    // Message final de validation
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'Prévisions actualisées. Vous pouvez recalculer.', type: 'success' }
+    }));
   } catch (error) {
-    statusEl.textContent = error.message || 'Impossible de rafraîchir les prévisions.';
-    statusEl.style.color = 'var(--status-error)';
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' }
+    }));
   }
 });
+
 
 loadSavedValues();

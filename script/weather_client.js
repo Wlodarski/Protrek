@@ -51,26 +51,26 @@ async function fetchFallbackAltitude(lat, lon) {
     // URL absolue et propre
     const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`Erreur HTTP: ${response.status}`);
     }
-    
+
     // Sécurité : On vérifie que le serveur renvoie bien du JSON et non de l'HTML (ex: <!doctype ...)
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new TypeError("Le serveur n'a pas renvoyé un format JSON valide.");
     }
-    
+
     const data = await response.json();
-    
+
     // Extraction sécurisée du tableau d'élévation
     if (data && Array.isArray(data.elevation) && data.elevation.length > 0) {
       const elevationValue = data.elevation[0];
-      console.log(`Altitude estimée via API tierce : ${elevationValue}m`);
+      console.log(`Altitude estimée via API tierce : ${elevationValue} m`);
       return elevationValue;
     }
-    
+
     return null;
   } catch (err) {
     console.warn("Échec de la récupération de l'altitude de secours :", err.message);
@@ -78,89 +78,105 @@ async function fetchFallbackAltitude(lat, lon) {
   }
 }
 
+/**
+ * Émet un événement personnalisé pour notifier l'application de la progression du GPS
+ */
+function dispatchGpsStatus(message, type = 'info') {
+  if (type === 'warn') console.warn(message);
+  else if (type === 'error') console.error(message);
+  else console.log(message);
 
+  window.dispatchEvent(new CustomEvent('gps-status', {
+    detail: { message, type }
+  }));
+}
 
 /**
  * Récupère la géolocalisation de l'utilisateur de manière asynchrone.
  */
 function getUserGeocode() {
+
   const storedLocation = getStoredLocation();
   if (!navigator.geolocation) {
     return Promise.resolve(storedLocation || getDefaultLocation());
   }
 
   return new Promise((resolve) => {
-    let watchId = null;
-    let timerId = null;
+    let attempts = 0;
+    const maxAttempts = 3;
     let bestLocation = null;
 
-    // Fonction de nettoyage des écouteurs pour éviter les fuites de mémoire
-    const cleanUp = () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      if (timerId !== null) clearTimeout(timerId);
+    dispatchGpsStatus("Début de la séquence de stabilisation forcée du GPS...", 'info');
+
+    const executeAttempt = () => {
+      attempts++;
+      dispatchGpsStatus(`[GPS] Tentative de mesure ${attempts}/${maxAttempts}...`, 'info');
+
+      navigator.geolocation.getCurrentPosition(
+        async ({ coords }) => {
+          const location = {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            altitude: coords.altitude,
+            accuracy: coords.accuracy,
+            altitudeAccuracy: coords.altitudeAccuracy
+          };
+
+          dispatchGpsStatus(`[GPS] Mesure ${attempts} reçue (Précision H: ${Math.round(location.accuracy)}m, V: ${location.altitudeAccuracy !== null ? Math.round(location.altitudeAccuracy) + 'm' : 'indisponible'})`, 'info');
+
+          if (!bestLocation || location.accuracy < bestLocation.accuracy) {
+            bestLocation = location;
+          }
+
+          if (location.accuracy <= 20 && location.altitude !== null) {
+            dispatchGpsStatus("Signal GPS optimal détecté !", 'success');
+            finalizeLocation(bestLocation);
+            return;
+          }
+
+          evaluateNextStep();
+        },
+        (error) => {
+          dispatchGpsStatus(`[GPS] Échec de la tentative ${attempts}: ${error.message}`, 'warn');
+          evaluateNextStep();
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 3500 }
+      );
     };
 
-    // Sécurité : Si le GPS met trop de temps à se stabiliser, on livre la meilleure position trouvée
-    timerId = setTimeout(async () => {
-      cleanUp();
-      console.warn("Temps de stabilisation GPS écoulé (Timeout).");
-      
-      if (bestLocation) {
-        // Si l'altitude est toujours manquante à la fin du chrono, appel à l'API de secours
-        if (bestLocation.altitude === null || bestLocation.altitude === undefined) {
-          const estimatedAltitude = await fetchFallbackAltitude(bestLocation.latitude, bestLocation.longitude);
-          if (estimatedAltitude !== null) {
-            bestLocation.altitude = estimatedAltitude;
-            //bestLocation.altitudeAccuracy = 30;
-          }
-        }
-        resolve(bestLocation);
+    const evaluateNextStep = () => {
+      if (attempts < maxAttempts) {
+        setTimeout(executeAttempt, 1500);
       } else {
-        resolve(storedLocation || getDefaultLocation());
+        dispatchGpsStatus("Fin du cycle de recherche. Sélection du meilleur profil.", 'info');
+        finalizeLocation(bestLocation);
       }
-    }, 12000); // On laisse 12 secondes maximum au GPS pour se stabiliser
+    };
 
-    watchId = navigator.geolocation.watchPosition(
-      async ({ coords }) => {
-        const location = {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          altitude: coords.altitude,
-          accuracy: coords.accuracy,
-          altitudeAccuracy: coords.altitudeAccuracy
-        };
-
-        console.log(`[GPS] Nouvelle mesure - Précision H: ${location.accuracy}m, V: ${location.altitudeAccuracy ?? 'null'}m`);
-
-        // Stratégie de sélection : On garde la position si elle est plus précise horizontalement
-        if (!bestLocation || location.accuracy < bestLocation.accuracy) {
-          bestLocation = location;
-        }
-
-        // SEUIL DE STABILISATION IDÉAL :
-        // Si la précision horizontale est excellente (< 15m) ET qu'on a enfin l'altitude matérielle
-        if (location.accuracy <= 15 && location.altitude !== null && location.altitudeAccuracy !== null) {
-          console.info("Signal GPS stabilisé avec succès !");
-          cleanUp();
-          
-          if (isValidLocation(location)) {
-            localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
-            resolve(location);
+    const finalizeLocation = async (location) => {
+      if (location) {
+        if (location.altitude === null || location.altitude === undefined) {
+          dispatchGpsStatus("Altitude matérielle absente. Interrogation de l'API de secours Open-Meteo...", 'info');
+          const estimatedAltitude = await fetchFallbackAltitude(location.latitude, location.longitude);
+          if (estimatedAltitude !== null) {
+            location.altitude = estimatedAltitude;
+            location.altitudeAccuracy = undefined;
+            dispatchGpsStatus(`Altitude de secours appliquée avec succès : ${estimatedAltitude} m`, 'info');
           } else {
-            resolve(storedLocation || getDefaultLocation());
+            dispatchGpsStatus("Échec du calcul d'altitude de secours.", 'warn');
           }
         }
-      },
-      (error) => {
-        console.warn('Erreur de lecture GPS en continu:', error.message);
-        // On ne coupe pas immédiatement au premier sursaut d'erreur, on laisse le timeout gérer la fin
-      },
-      { 
-        enableHighAccuracy: true, 
-        maximumAge: 0, // Interdiction stricte d'utiliser une vieille coordonnée du cache
-        timeout: 10000 
+
+        if (isValidLocation(location)) {
+          localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
+          resolve(location);
+          return;
+        }
       }
-    );
+      resolve(storedLocation || getDefaultLocation());
+    };
+
+    executeAttempt();
   });
 }
 
@@ -188,7 +204,7 @@ async function buildApiUrl(baseUrl, geocode) {
  * Effectue la requête HTTP fetch et valide la réponse JSON.
  */
 async function fetchJson(baseUrl, label, geocode) {
-  const url = await buildApiUrl(baseUrl, geocode);  
+  const url = await buildApiUrl(baseUrl, geocode);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
   return response.json();
@@ -202,10 +218,15 @@ export async function fetchCombinedForecast() {
   const location = await getUserGeocode();
   const geocode = `${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`;
 
+  dispatchGpsStatus("Téléchargement des prévisions de Weather.com...", 'info');
+
   const [forecast, current] = await Promise.all([
     fetchJson(BASE_API_URL, 'Prévisions météo', geocode),
     fetchJson(CURRENT_API_URL, 'Conditions actuelles', geocode)
   ]);
+
+  dispatchGpsStatus("Conditions actuelles récupérées avec succès.", 'info');
+  dispatchGpsStatus("Prévisions météo (3 jours) téléchargées.", 'info');
 
   return {
     generatedAt: new Date().toISOString(),

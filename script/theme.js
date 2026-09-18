@@ -50,13 +50,13 @@ function applyTheme(theme) {
 
 export async function initializeTheme() {
   const themeToggle = document.getElementById('themeToggle');
-  const status = document.getElementById('status');
   if (!themeToggle) return;
 
-  const updateStatus = (message, color) => {
-    if (!status) return;
-    status.style.color = color;
-    status.textContent = message;
+  // CORRECTION : Transmission des notifications via les événements du journal de bord
+  const updateStatus = (message, type = 'info') => {
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message, type }
+    }));
   };
 
   let theme = 'system';
@@ -65,20 +65,20 @@ export async function initializeTheme() {
   } catch (error) {
     const mes = 'Impossible de charger la palette:';
     console.warn(mes, error);
-    updateStatus(`${mes} ${error}`, 'var(--status-error)');
+    updateStatus(`${mes} ${error}`, 'error');
   }
   applyTheme(theme);
 
   const cycleTheme = async () => {
     theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
     applyTheme(theme);
-    updateStatus(`Thème « ${theme} » activé`, 'var(--status-info)');
+    updateStatus(`Thème « ${theme} » activé`, 'info');
     try {
       await saveTheme(theme);
     } catch (error) {
       const mes = 'Impossible de conserver la palette:';
       console.warn(mes, error);
-      updateStatus(`${mes} ${error}`, 'var(--status-error)');
+      updateStatus(`${mes} ${error}`, 'error');
     }
   };
 

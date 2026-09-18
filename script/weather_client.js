@@ -14,7 +14,7 @@ function isValidLocation(location) {
     && Number.isFinite(location.latitude)
     && Number.isFinite(location.longitude)
     && Number.isFinite(location.accuracy)
-    && (location.altitude === null || Number.isFinite(location.altitude)) 
+    && (location.altitude === null || Number.isFinite(location.altitude))
     && (location.altitudeAccuracy === null || Number.isFinite(location.altitudeAccuracy))
     && location.latitude >= -90
     && location.latitude <= 90
@@ -52,9 +52,12 @@ async function fetchFallbackAltitude(lat, lon) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
     const data = await response.json();
-    if (data && data.elevation !== undefined && Array.isArray(data.elevation)) {
-      console.log(`Altitude estimée via API tierce : ${data.elevation[0]}m`);
-      return data.elevation[0];
+
+    // Vérification que 'elevation' existe et contient au moins un élément
+    if (data && Array.isArray(data.elevation) && data.elevation.length > 0) {
+      const elevationValue = data.elevation[0]; // Extraction du nombre (ex: 34.0)
+      console.log(`Altitude estimée via API tierce : ${elevationValue}m`);
+      return elevationValue;
     }
     return null;
   } catch (err) {
@@ -62,6 +65,7 @@ async function fetchFallbackAltitude(lat, lon) {
     return null;
   }
 }
+
 
 /**
  * Récupère la géolocalisation de l'utilisateur de manière asynchrone.
@@ -87,11 +91,11 @@ function getUserGeocode() {
         if (location.altitude === null || location.altitude === undefined) {
           console.info("Altitude GPS indisponible. Interrogation de l'API de secours...");
           const estimatedAltitude = await fetchFallbackAltitude(location.latitude, location.longitude);
-          
+
           if (estimatedAltitude !== null) {
             location.altitude = estimatedAltitude;
             // On applique une précision théorique standard pour les modèles numériques de terrain (~30m)
-            location.altitudeAccuracy = 30; 
+            location.altitudeAccuracy = 30;
           }
         }
 
@@ -147,7 +151,7 @@ async function fetchJson(baseUrl, label, geocode) {
 export async function fetchCombinedForecast() {
   const location = await getUserGeocode();
   const geocode = `${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`;
-  
+
   const [forecast, current] = await Promise.all([
     fetchJson(BASE_API_URL, 'Prévisions météo', geocode),
     fetchJson(CURRENT_API_URL, 'Conditions actuelles', geocode)

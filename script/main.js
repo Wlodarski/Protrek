@@ -14,4 +14,17 @@ import('./version.js')
 		if (versionEl) versionEl.textContent = 'version indisponible';
 	});
 
+// 1. Désactive la mémoire de défilement par défaut du navigateur
+if ('scrollRestoration' in history) {
+	history.scrollRestoration = 'manual';
+}
+
+// 2. Force le conteneur fixé à remonter tout en haut au chargement
+window.addEventListener('DOMContentLoaded', () => {
+	const clipper = document.querySelector('.viewport-clipper');
+	if (clipper) {
+		clipper.scrollTop = 0;
+	}
+});
+
 import('./app.js').catch((error) => console.error('Échec de l’initialisation de l’application:', error));

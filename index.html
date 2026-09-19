@@ -95,17 +95,13 @@
 
     body {
       margin: 0;
-      min-height: 100dvh;
-      background-color: #000;
-      color: var(--text);
-      font-family: Arial, Helvetica, sans-serif;
-      transition: background 0.2s ease, color 0.2s ease;
-    }
-
-    .viewport-clipper {
+      min-height: 100vh;
       display: grid;
       place-items: center;
       background: linear-gradient(in oklab to bottom, #000, var(--accent));
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     .panel {
@@ -121,22 +117,8 @@
     }
 
     @media (max-width: 480px) {
-      .viewport-clipper {
-        position: relative;
-        top: 0;
-        left: 0;
-        width: 100dvw;
-        height: 100dvh;
-        overflow-y: scroll;
-        clip-path: inset(0 0 round clamp(16px, 10vw, 48px));
-      }
-
       .panel {
         border-radius: clamp(16px, 10vw, 48px);
-      }
-
-      .version {
-        min-height: 1rem;
       }
     }
 
@@ -323,68 +305,66 @@
 </head>
 
 <body>
-  <div class="viewport-clipper">
-    <main class="panel">
-      <h1 id="themeToggle" tabindex="0" role="button" aria-label="Changer de palette de couleurs"
-        title="Changer de palette de couleurs">Calibration Pro Trek <sup class="theme" id="theme"></sup></h1>
-      <p class="subtitle">Calcule l’altitude réelle corrigée à partir de la pression, de la température et de
-        l’humidité.
-      </p>
+  <main class="panel">
+    <h1 id="themeToggle" tabindex="0" role="button" aria-label="Changer de palette de couleurs"
+      title="Changer de palette de couleurs">Calibration Pro Trek <sup class="theme" id="theme"></sup></h1>
+    <p class="subtitle">Calcule l’altitude réelle corrigée à partir de la pression, de la température et de
+      l’humidité.
+    </p>
 
-      <form id="calibrationForm">
-        <label>
-          Date et heure de calibration
-          <input id="calibrationTime" type="datetime-local" required />
-        </label>
+    <form id="calibrationForm">
+      <label>
+        Date et heure de calibration
+        <input id="calibrationTime" type="datetime-local" required />
+      </label>
 
-        <label>
-          Altitude réelle de calibration (m)
-          <input id="calibrationAltitude" type="number" step="1" min="-100" max="5000" required />
-        </label>
+      <label>
+        Altitude réelle de calibration (m)
+        <input id="calibrationAltitude" type="number" step="1" min="-100" max="5000" required />
+      </label>
 
-        <label>
-          Altitude affichée par la Pro Trek (m)
-          <input id="currentAltitude" type="number" step="1" min="-2000" max="5000" required />
-        </label>
+      <label>
+        Altitude affichée par la Pro Trek (m)
+        <input id="currentAltitude" type="number" step="1" min="-2000" max="5000" required />
+      </label>
 
-        <div class="actions">
-          <button type="submit" class="primary">Calculer</button>
-        </div>
-
-        <div id="status" class="status" aria-live="polite"></div>
-      </form>
-
-      <div class="result-card" id="resultCard" aria-live="polite">
-        <div class="result-label">Altitude réelle estimée</div>
-        <div class="result-value" id="resultValue">-- m</div>
-
-        <div class="metric-grid">
-          <div class="metric">
-            <span class="metric-name">Pression</span>
-            <span class="metric-value" id="pressureMetric">-- m</span>
-          </div>
-          <div class="metric">
-            <span class="metric-name">Thermique</span>
-            <span class="metric-value" id="thermalMetric">-- m</span>
-          </div>
-          <div class="metric">
-            <span class="metric-name">Hygro</span>
-            <span class="metric-value" id="humidityMetric">-- m</span>
-          </div>
-        </div>
-
-        <div class="result-details" id="resultDetails">Aucune correction calculée.</div>
+      <div class="actions">
+        <button type="submit" class="primary">Calculer</button>
       </div>
 
-      <section class="forecast-coverage" id="forecastCoverage" aria-live="polite">
-        <button type="button" class="forecast-refresh" id="refreshBtn">Rafraîchir prévisions</button>
-        <div id="forecastCoverageText"></div>
-      </section>
-    </main>
+      <div id="status" class="status" aria-live="polite"></div>
+    </form>
 
-    <footer class="version" id="version" aria-label="Double-clic pour mise à jour"
-      ondblclick="window.location.reload();">--</footer>
-  </div>
+    <div class="result-card" id="resultCard" aria-live="polite">
+      <div class="result-label">Altitude réelle estimée</div>
+      <div class="result-value" id="resultValue">-- m</div>
+
+      <div class="metric-grid">
+        <div class="metric">
+          <span class="metric-name">Pression</span>
+          <span class="metric-value" id="pressureMetric">-- m</span>
+        </div>
+        <div class="metric">
+          <span class="metric-name">Thermique</span>
+          <span class="metric-value" id="thermalMetric">-- m</span>
+        </div>
+        <div class="metric">
+          <span class="metric-name">Hygro</span>
+          <span class="metric-value" id="humidityMetric">-- m</span>
+        </div>
+      </div>
+
+      <div class="result-details" id="resultDetails">Aucune correction calculée.</div>
+    </div>
+
+    <section class="forecast-coverage" id="forecastCoverage" aria-live="polite">
+      <button type="button" class="forecast-refresh" id="refreshBtn">Rafraîchir prévisions</button>
+      <div id="forecastCoverageText"></div>
+    </section>
+  </main>
+
+  <footer class="version" id="version" aria-label="Double-clic pour mise à jour" ondblclick="window.location.reload();">
+    --</footer>
   <script type="module" src="./script/main.js"></script>
 </body>
 

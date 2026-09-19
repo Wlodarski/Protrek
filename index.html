@@ -97,7 +97,7 @@
     body {
       margin: 0;
       min-height: 100dvh;
-      background-color: #0f0;
+      background-color: rgb(169, 161, 59);
       color: var(--text);
       font-family: Arial, Helvetica, sans-serif;
       transition: background 0.2s ease, color 0.2s ease;
@@ -130,11 +130,16 @@
         height: 99.9dvh;
         overflow-y: auto;
         clip-path: inset(0 0 round clamp(16px, 10vw, 48px));
+
+        /* AJOUT : Améliore la fluidité et le comportement du défilement tactile */
+        -webkit-overflow-scrolling: touch;
+        overflow-anchor: none;
       }
 
       .panel {
         border-radius: clamp(16px, 10vw, 48px);
       }
+
       .version {
         min-height: 1rem;
       }

@@ -404,9 +404,9 @@ refreshBtn.addEventListener('click', async () => {
 
   try {
     const { fetchCombinedForecast } = await import('./weather_client.js');
-    /* const forecast = await fetchCombinedForecast();
+    const forecast = await fetchCombinedForecast();
     localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
-    updateForecastCoverage(forecast); */
+    updateForecastCoverage(forecast);
 
     // Valeurs par défaut pour la calibration
     const location = getStoredLocation();

@@ -1,9 +1,9 @@
-import { getApiKey } from './api_key_storage.js';
+import { getApiKey, getMapApiKey } from './api_key_storage.js';
 
 const FORECAST_API_URL = 'https://api.weather.com/v3/wx/forecast/hourly/3day';
 const CURRENT_API_URL = 'https://api.weather.com/v3/wx/observations/current';
 const ALTITUDE_API_URL = 'https://api.open-meteo.com/v1/elevation';
-const DEFAULT_GEOCODE = '45.58,-73.54,36';
+const DEFAULT_GEOCODE = '45.58,-73.54,36'; // lat,lon,alt
 const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 
 /**

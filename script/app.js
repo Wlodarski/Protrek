@@ -10,7 +10,8 @@ import { initializeApiKey } from './api_key_storage.js';
 import { initializeTheme } from './theme.js';
 
 await initializeTheme();
-await initializeApiKey();
+await initializeApiKey();       // ?API=xxxxx
+await initializeMapApiKey();    // ?MAP=yyyyy
 
 const STORAGE_KEYS = {
   time: 'protrek.calibration.time',
@@ -415,7 +416,7 @@ refreshBtn.addEventListener('click', async () => {
         detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
       }));
     }
-    timeInput.value = buildCurrentTimeString().slice(0,16);
+    timeInput.value = buildCurrentTimeString().slice(0, 16);
 
     // Message final de validation
     window.dispatchEvent(new CustomEvent('gps-status', {

@@ -14,9 +14,4 @@ import('./version.js')
 		if (versionEl) versionEl.textContent = 'version indisponible';
 	});
 
-// 1. Désactive la mémoire de défilement par défaut du navigateur
-if ('scrollRestoration' in history) {
-	history.scrollRestoration = 'manual';
-}
-
 import('./app.js').catch((error) => console.error('Échec de l’initialisation de l’application:', error));

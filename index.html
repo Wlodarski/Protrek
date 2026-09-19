@@ -122,12 +122,12 @@
 
     @media (max-width: 480px) {
       .viewport-clipper {
-        /* position: absolute;
+        position: relative;
         top: 0;
-        left: 0; */
+        left: 0;
         width: 100dvw;
         height: 100dvh;
-        overflow-y: auto;
+        overflow-y: scroll;
         clip-path: inset(0 0 round clamp(16px, 10vw, 48px));
       }
 

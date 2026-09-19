@@ -172,7 +172,7 @@ function updateForecastCoverage(rawData) {
   const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
   const location = rawData?.location || getStoredLocation();
   if (forecastTimes.length === 0 && !currentTime) {
-    forecastCoverageTextEl.textContent = 'Horaires des prévisions indisponibles.';
+    forecastCoverageTextEl.textContent = 'Prévisions indisponibles.';
     prependForecastLocation(location);
     return;
   }
@@ -374,7 +374,6 @@ async function computeResult() {
 }
 
 
-
 function loadSavedValues() {
   const savedTime = localStorage.getItem(STORAGE_KEYS.time);
   const calibrationTime = savedTime
@@ -431,3 +430,4 @@ refreshBtn.addEventListener('click', async () => {
 
 
 loadSavedValues();
+updateForecastCoverage(await loadForecast());

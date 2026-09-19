@@ -47,10 +47,6 @@ window.addEventListener('gps-status', (event) => {
   statusEl.style.padding = '10px';
   statusEl.style.fontSize = '0.85rem';
   statusEl.style.textAlign = 'left';
-  //statusEl.style.backgroundColor = 'var(--metric-surface)';
-  //statusEl.style.border = '1px solid var(--panel-2)';
-  //statusEl.style.borderRadius = '6px';
-  //statusEl.style.boxShadow = 'inset 0 2px 4px var(--shadow)';
 
   // 2. Création de la ligne textuelle
   const logLine = document.createElement('div');
@@ -403,18 +399,28 @@ form.addEventListener('submit', async (event) => {
 });
 
 refreshBtn.addEventListener('click', async () => {
-  // CORRECTION : On vide les anciens logs avant de lancer le nouveau cycle
+  // On vide les anciens logs avant de lancer le nouveau cycle
   if (statusEl) statusEl.replaceChildren();
 
   try {
     const { fetchCombinedForecast } = await import('./weather_client.js');
-    const forecast = await fetchCombinedForecast();
+    /* const forecast = await fetchCombinedForecast();
     localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
-    updateForecastCoverage(forecast);
+    updateForecastCoverage(forecast); */
+
+    // Valeurs par défaut pour la calibration
+    const location = getStoredLocation();
+    if (Number.isFinite(location.altitude)) {
+      calibrationAltitude.value = location.altitude;
+      window.dispatchEvent(new CustomEvent('gps-status', {
+        detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
+      }));
+    }
+    timeInput.value = buildCurrentTimeString().slice(0,16);
 
     // Message final de validation
     window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'Prévisions actualisées. Vous pouvez recalculer.', type: 'success' }
+      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' }
     }));
   } catch (error) {
     window.dispatchEvent(new CustomEvent('gps-status', {

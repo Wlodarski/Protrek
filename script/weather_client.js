@@ -1,8 +1,9 @@
 import { getApiKey } from './api_key_storage.js';
 
-const BASE_API_URL = 'https://api.weather.com/v3/wx/forecast/hourly/3day';
+const FORECAST_API_URL = 'https://api.weather.com/v3/wx/forecast/hourly/3day';
 const CURRENT_API_URL = 'https://api.weather.com/v3/wx/observations/current';
-const DEFAULT_GEOCODE = '45.58,-73.54,0';
+const ALTITUDE_API_URL = 'https://api.open-meteo.com/v1/elevation';
+const DEFAULT_GEOCODE = '45.58,-73.54,36';
 const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
 
 /**
@@ -43,13 +44,18 @@ function getDefaultLocation() {
 }
 
 /**
- * API de secours : Interroge les données topographiques d'Open-Meteo
- * lorsque la puce GPS de l'appareil ne fournit pas l'élévation.
+ * Interroge les données topographiques Copernicus DEM 2021 (GLO-90) pour 
+ * obtenir l'élévation au point de calibration. La banque de données quadrille 
+ * le globe en tuile de 3.0” x 3.0” latitude/longitude, avec une précision 
+ * verticale d'au moins 4 m.
+ * 
+ * Airbus Copernicus Digital Elevation Model 
+ * docs\geo1988-copernicusdem-spe-002_producthandbook_i5.0.pdf
  */
-async function fetchFallbackAltitude(lat, lon) {
+async function altitudeGLO(lat, lon) {
   try {
     // URL absolue et propre
-    const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
+    const url = ALTITUDE_API_URL + `?latitude=${lat}&longitude=${lon}`;
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -67,13 +73,12 @@ async function fetchFallbackAltitude(lat, lon) {
     // Extraction sécurisée du tableau d'élévation
     if (data && Array.isArray(data.elevation) && data.elevation.length > 0) {
       const elevationValue = data.elevation[0];
-      console.log(`Altitude estimée via API tierce : ${elevationValue} m`);
       return elevationValue;
     }
 
     return null;
   } catch (err) {
-    console.warn("Échec de la récupération de l'altitude de secours :", err.message);
+    dispatchGpsStatus(`[GLO-90] ${err.message}`, 'error');
     return null;
   }
 }
@@ -106,11 +111,11 @@ function getUserGeocode() {
     const maxAttempts = 3;
     let bestLocation = null;
 
-    dispatchGpsStatus("Début de la séquence de stabilisation forcée du GPS...", 'info');
+    dispatchGpsStatus("Lectures multiples du GPS...", 'info');
 
     const executeAttempt = () => {
       attempts++;
-      dispatchGpsStatus(`[GPS] Tentative de mesure ${attempts}/${maxAttempts}...`, 'info');
+      // dispatchGpsStatus(`[GPS] Tentative de mesure ${attempts}/${maxAttempts}...`, 'info');
 
       navigator.geolocation.getCurrentPosition(
         async ({ coords }) => {
@@ -122,14 +127,14 @@ function getUserGeocode() {
             altitudeAccuracy: coords.altitudeAccuracy
           };
 
-          dispatchGpsStatus(`[GPS] Mesure ${attempts} reçue (Précision H: ${Math.round(location.accuracy)}m, V: ${location.altitudeAccuracy !== null ? Math.round(location.altitudeAccuracy) + 'm' : 'indisponible'})`, 'info');
+          dispatchGpsStatus(`[GPS] CEP-95 : ${Math.round(location.accuracy)} m`, 'info');
 
           if (!bestLocation || location.accuracy < bestLocation.accuracy) {
             bestLocation = location;
           }
 
-          if (location.accuracy <= 20 && location.altitude !== null) {
-            dispatchGpsStatus("Signal GPS optimal détecté !", 'success');
+          if (location.accuracy <= 23) {  // quart de 92, parce qu'au pire, 3 arc seconde = 92 m à l'équateur
+            dispatchGpsStatus("[GPS] Précision suffisante obtenue !", 'success');
             finalizeLocation(bestLocation);
             return;
           }
@@ -148,24 +153,27 @@ function getUserGeocode() {
       if (attempts < maxAttempts) {
         setTimeout(executeAttempt, 1500);
       } else {
-        dispatchGpsStatus("Fin du cycle de recherche. Sélection du meilleur profil.", 'info');
+        dispatchGpsStatus(
+          `[GPS] Coordonnées les plus précises : ${bestLocation.latitude}, ${bestLocation.longitude}`,
+          'info'
+        );
         finalizeLocation(bestLocation);
       }
     };
 
     const finalizeLocation = async (location) => {
       if (location) {
-        if (location.altitude === null || location.altitude === undefined) {
-          dispatchGpsStatus("Altitude matérielle absente. Interrogation de l'API de secours Open-Meteo...", 'info');
-          const estimatedAltitude = await fetchFallbackAltitude(location.latitude, location.longitude);
-          if (estimatedAltitude !== null) {
-            location.altitude = estimatedAltitude;
-            location.altitudeAccuracy = undefined;
-            dispatchGpsStatus(`Altitude de secours appliquée avec succès : ${estimatedAltitude} m`, 'info');
-          } else {
-            dispatchGpsStatus("Échec du calcul d'altitude de secours.", 'warn');
-          }
+
+        dispatchGpsStatus("Récupération de l'élévation GLO-90...", 'info');
+        const estimatedAltitude = await altitudeGLO(location.latitude, location.longitude);
+        if (estimatedAltitude !== null) {
+          location.altitude = estimatedAltitude;
+          location.altitudeAccuracy = 4;  // Absolute Vertical Accuracy : < 4m (90% linear error)
+          dispatchGpsStatus(`[GLO-90] Élévation obtenue : ${estimatedAltitude} m`, 'info');
+        } else {
+          dispatchGpsStatus("[GLO-90] Échec de l'obtention de l'élévation", 'warn');
         }
+
 
         if (isValidLocation(location)) {
           localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
@@ -187,7 +195,7 @@ function getUserGeocode() {
 async function buildApiUrl(baseUrl, geocode) {
   const apiKey = await getApiKey();
   if (!apiKey) {
-    throw new Error('Aucune clé API météo configurée. Utilisez ?API=votre_clé.');
+    throw new Error('[MÉTÉO] Aucune clé API météo configurée. Utilisez ?API=votre_clé.');
   }
 
   const params = new URLSearchParams({
@@ -205,8 +213,22 @@ async function buildApiUrl(baseUrl, geocode) {
  */
 async function fetchJson(baseUrl, label, geocode) {
   const url = await buildApiUrl(baseUrl, geocode);
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
+  let response; // Déclarée ici pour être accessible en dehors du try/catch
+
+  try {
+    response = await fetch(url);
+  } catch (err) {
+    // Intercepte les pannes réseau pures (ex: pas d'internet, DNS en panne)
+    dispatchGpsStatus(`[MÉTÉO] ${label} indisponible : ${err.message}`, 'error');
+    throw new Error(`[MÉTÉO] ${label} : Échec de la connexion réseau.`);
+  }
+
+  // Vérifie si le serveur a répondu par une erreur HTTP (ex: 401 Unauthorized, 404)
+  if (!response.ok) {
+    dispatchGpsStatus(`[MÉTÉO] ${label} : Erreur serveur (HTTP ${response.status})`, 'error');
+    throw new Error(`[MÉTÉO] ${label}: HTTP ${response.status}`);
+  }
+
   return response.json();
 }
 
@@ -218,15 +240,15 @@ export async function fetchCombinedForecast() {
   const location = await getUserGeocode();
   const geocode = `${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`;
 
-  dispatchGpsStatus("Téléchargement des prévisions de Weather.com...", 'info');
+  dispatchGpsStatus("[MÉTÉO] Téléchargement des prévisions...", 'info');
 
   const [forecast, current] = await Promise.all([
-    fetchJson(BASE_API_URL, 'Prévisions météo', geocode),
+    fetchJson(FORECAST_API_URL, 'Prévisions météo', geocode),
     fetchJson(CURRENT_API_URL, 'Conditions actuelles', geocode)
   ]);
 
-  dispatchGpsStatus("Conditions actuelles récupérées avec succès.", 'info');
-  dispatchGpsStatus("Prévisions météo (3 jours) téléchargées.", 'info');
+  dispatchGpsStatus("[MÉTÉO] Conditions actuelles récupérées.", 'info');
+  dispatchGpsStatus("[MÉTÉO] Prévisions météo (3 jours) téléchargées.", 'info');
 
   return {
     generatedAt: new Date().toISOString(),

@@ -104,15 +104,6 @@
     }
 
     .viewport-clipper {
-      position: fixed;
-    
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      clip-path: inset(0 0 round 24px);
-      overflow-y: auto;
-
       display: grid;
       place-items: center;
       background: linear-gradient(in oklab to bottom, #000, var(--accent));
@@ -128,6 +119,22 @@
       border-radius: 16px;
       padding: 28px;
       box-shadow: 0 20px 40px var(--shadow);
+    }
+
+    @media (max-width: 768px) and (orientation: portrait) {
+      .viewport-clipper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow-y: auto;
+        clip-path: inset(0 0 round clamp(16px, 10vw, 32px));
+      }
+
+      .panel {
+        border-radius: clamp(16px, 10vw, 32px);
+      }
     }
 
     h1 {
@@ -372,7 +379,8 @@
       </section>
     </main>
 
-    <footer class="version" id="version" ondblclick="window.location.reload();"></footer>
+    <footer class="version" id="version" aria-label="Double-clic pour mise à jour"
+      ondblclick="window.location.reload();"></footer>
   </div>
   <script type="module" src="./script/main.js"></script>
 </body>

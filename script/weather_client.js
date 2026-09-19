@@ -171,7 +171,7 @@ function getUserGeocode() {
           location.altitudeAccuracy = 4;  // Absolute Vertical Accuracy : < 4m (90% linear error)
           dispatchGpsStatus(`[GLO-90] Élévation obtenue : ${estimatedAltitude} m`, 'info');
         } else {
-          dispatchGpsStatus("[GLO-90] Échec de l'obtention de l'élévation", 'warn');
+          dispatchGpsStatus("[GLO-90] Échec de l'obtention de l'élévation", 'error');
         }
 
 

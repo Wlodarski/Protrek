@@ -3,7 +3,10 @@ const DATABASE_VERSION = 1;
 const STORE_NAME = 'settings';
 const API_KEY_NAME = 'weatherApiKey';
 const MAP_KEY_NAME = 'mapApiKey';
-const URL_PARAMS = {API_KEY_NAME: 'API', MAP_KEY_NAME: 'MAP'};
+const URL_PARAMS = {
+  [API_KEY_NAME]: 'API',
+  [MAP_KEY_NAME]: 'MAP'
+};
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -25,15 +28,28 @@ function dispatchStorageStatus(message, type = 'info') {
 
 export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
   if (!apiKey || !keyName) return;
+  let database;
   try {
-    const database = await openDatabase();
+    database = await openDatabase();
     await new Promise((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, 'readwrite');
-      transaction.objectStore(STORE_NAME).put(apiKey, keyName);
+      const request = transaction.objectStore(STORE_NAME).put(apiKey, keyName);
+      request.onerror = () => reject(request.error);
       transaction.oncomplete = resolve;
       transaction.onerror = () => reject(transaction.error);
     });
-    database.close();
+
+    const savedApiKey = await new Promise((resolve, reject) => {
+      const request = database.transaction(STORE_NAME, 'readonly')
+        .objectStore(STORE_NAME)
+        .get(keyName);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    if (savedApiKey !== apiKey) {
+      throw new Error('La clé relue ne correspond pas à la clé écrite.');
+    }
 
     if (keyName === API_KEY_NAME) {
       dispatchStorageStatus("Clé API Weather sauvegardée avec succès.", "success");
@@ -42,61 +58,57 @@ export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
     }
   } catch (error) {
     dispatchStorageStatus(`Échec de sauvegarde de la clé API : ${error.message}`, "error");
+  } finally {
+    database?.close();
   }
 }
 
-export async function getApiKey() {
+async function getStoredApiKey(keyName, errorLabel) {
+  let database;
   try {
-    const database = await openDatabase();
+    database = await openDatabase();
     const apiKey = await new Promise((resolve, reject) => {
       const request = database.transaction(STORE_NAME, 'readonly')
         .objectStore(STORE_NAME)
-        .get(API_KEY_NAME);
+        .get(keyName);
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(request.error);
     });
 
     return apiKey;
   } catch (error) {
-    dispatchStorageStatus(`Impossible de lire la clé API en mémoire : ${error.message}`, "error");
+    dispatchStorageStatus(`Impossible de lire la clé ${errorLabel} en mémoire : ${error.message}`, "error");
     return null;
+  } finally {
+    database?.close();
   }
 }
 
-export async function getMapApiKey() {
-  try {
-    const database = await openDatabase();
-    const mapKey = await new Promise((resolve, reject) => {
-      const request = database.transaction(STORE_NAME, 'readonly')
-        .objectStore(STORE_NAME)
-        .get(MAP_KEY_NAME);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-
-    return mapKey;
-  } catch (error) {
-    dispatchStorageStatus(`Impossible de lire la clé Map en mémoire : ${error.message}`, "error");
-    return null;
-  }
+export function getApiKey() {
+  return getStoredApiKey(API_KEY_NAME, 'API');
 }
 
-export async function initializeApiKey() {
-  const apiKey = new URLSearchParams(window.location.search).get(URL_PARAMS.API_KEY_NAME);
-  if (!apiKey) return getApiKey();
+export function getMapApiKey() {
+  return getStoredApiKey(MAP_KEY_NAME, 'Map');
+}
 
-  dispatchStorageStatus("Nouvelle clé API détectée dans l'URL. Configuration...", "info");
-  await saveApiKey(apiKey);
-  window.history.replaceState({}, '', window.location.pathname);
+async function initializeStoredApiKey(keyName, cleanUrl) {
+  const urlParameter = URL_PARAMS[keyName];
+  const apiKey = new URLSearchParams(window.location.search).get(urlParameter);
+  if (!apiKey) return getStoredApiKey(keyName, keyName === MAP_KEY_NAME ? 'Map' : 'API');
+
+  dispatchStorageStatus(`Nouvelle clé ${urlParameter} détectée dans l'URL.`, "info");
+  await saveApiKey(apiKey, keyName);
+  if (cleanUrl) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
   return apiKey;
 }
 
-export async function initializeMapApiKey() {
-  const mapKey = new URLSearchParams(window.location.search).get(URL_PARAMS.MAP_KEY_NAME);
-  if (!mapKey) return getMapApiKey();
+export function initializeApiKey(cleanUrl = false) {
+  return initializeStoredApiKey(API_KEY_NAME, cleanUrl);
+}
 
-  dispatchStorageStatus("Nouvelle clé MAP détectée dans l'URL. Configuration...", "info");
-  await saveApiKey(mapKey, MAP_KEY_NAME);
-  window.history.replaceState({}, '', window.location.pathname);
-  return mapKey;
+export function initializeMapApiKey(cleanUrl = true) {
+  return initializeStoredApiKey(MAP_KEY_NAME, cleanUrl);
 }

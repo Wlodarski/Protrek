@@ -6,12 +6,9 @@ import {
   calculateThermalDrift,
   calculateHumidityDrift
 } from './calculation.js';
-import { initializeApiKey } from './api_key_storage.js';
+import { initializeApiKey, initializeMapApiKey } from './api_key_storage.js';
 import { initializeTheme } from './theme.js';
 
-await initializeTheme();
-await initializeApiKey();       // ?API=xxxxx
-await initializeMapApiKey();    // ?MAP=yyyyy
 
 const STORAGE_KEYS = {
   time: 'protrek.calibration.time',
@@ -73,6 +70,13 @@ window.addEventListener('gps-status', (event) => {
   statusEl.appendChild(logLine);
   statusEl.scrollTop = statusEl.scrollHeight;
 });
+
+await initializeTheme();
+await initializeApiKey(false);       // ?API=xxxxx
+await initializeMapApiKey(true);    // ?MAP=yyyyy
+
+loadSavedValues();
+updateForecastCoverage(await loadForecast());
 
 
 async function loadForecast() {
@@ -429,6 +433,3 @@ refreshBtn.addEventListener('click', async () => {
   }
 });
 
-
-loadSavedValues();
-updateForecastCoverage(await loadForecast());

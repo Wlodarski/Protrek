@@ -10,6 +10,7 @@
   <link rel="manifest" href="./manifest.json" />
   <link rel="dns-prefetch" href="https://api.open-meteo.com" />
   <link rel="dns-prefetch" href="https://api.weather.com" />
+  <link rel="dns-prefetch" href="https://maps.geoapify.com" />
   <meta name="description"
     content="Calcule l'altitude réelle corrigée à partir de la pression, de la température et de l'humidité." />
   <title>Pro Trek - Calibration</title>
@@ -222,6 +223,21 @@
       line-height: 1.5;
     }
 
+    .carte {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      touch-action: auto;
+      transition: 2s ease-in;
+
+    }
+
+    .carte:hover {
+      object-fit: none;
+      transition: 2s ease-in;
+
+    }
+
     .forecast-coverage strong {
       color: var(--text);
       font-weight: 400;
@@ -244,7 +260,7 @@
 
     .nowifi {
       opacity: 0.3;
-      cursor:not-allowed;
+      cursor: not-allowed;
     }
 
     .result-label {
@@ -363,7 +379,7 @@
     </div>
 
     <section class="forecast-coverage" id="forecastCoverage" aria-live="polite">
-    
+      <img src="img\cartevide.jpg" id="carte" class="carte" alt="carte centrée sur la position de calibration" />
       <button type="button" class="forecast-refresh" id="refreshBtn"></button>
       <div id="forecastCoverageText"></div>
     </section>

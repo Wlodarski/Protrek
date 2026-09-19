@@ -237,9 +237,14 @@
       font-size: 0.72rem;
     }
 
-    .forecast-refresh:hover {
+    .forecast-refresh:not(.nowifi):hover {
       background-color: var(--accent);
       color: var(--button-text);
+    }
+
+    .nowifi {
+      opacity: 0.3;
+      cursor:not-allowed;
     }
 
     .result-label {
@@ -358,7 +363,8 @@
     </div>
 
     <section class="forecast-coverage" id="forecastCoverage" aria-live="polite">
-      <button type="button" class="forecast-refresh" id="refreshBtn">Rafraîchir prévisions</button>
+    
+      <button type="button" class="forecast-refresh" id="refreshBtn"></button>
       <div id="forecastCoverageText"></div>
     </section>
   </main>

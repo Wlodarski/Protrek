@@ -433,3 +433,29 @@ refreshBtn.addEventListener('click', async () => {
   }
 });
 
+
+// Vérifie si on a Internet
+
+function turnOnOffbtn(isOn = false) {
+  if (isOn) {
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('nowifi');
+    refreshBtn.textContent = 'Rafraîchir prévisions';
+  } else {
+    refreshBtn.disabled = true;
+    refreshBtn.classList.add('nowifi');
+    refreshBtn.textContent = 'Hors ligne';
+  }
+}
+
+turnOnOffbtn(navigator.onLine);
+
+window.addEventListener('online', () => {
+  console.log('🟢 On a Internet !');
+  turnOnOffbtn(true);
+});
+
+window.addEventListener('offline', () => {
+  console.log('🔴 Pas d\'Internet...');
+  turnOnOffbtn(false);
+});

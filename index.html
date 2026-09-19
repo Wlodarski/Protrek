@@ -122,13 +122,17 @@
     }
 
     @media (max-width: 768px) and (orientation: portrait) {
+      body {
+        min-height: 100dvh;
+      }
+
       .viewport-clipper {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
-        overflow-y: auto;
+        width: 100dvw;
+        height: 100dvh;
+        overflow-y: visible;
         clip-path: inset(0 0 round clamp(16px, 10vw, 48px));
       }
 

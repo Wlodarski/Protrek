@@ -97,7 +97,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background-color: #7f2d2d;
+      background-color: #cc0e0e;
       color: var(--text);
       font-family: Arial, Helvetica, sans-serif;
       transition: background 0.2s ease, color 0.2s ease;
@@ -121,7 +121,7 @@
       box-shadow: 0 20px 40px var(--shadow);
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 480px) {
       body {
         min-height: 100dvh;
       }
@@ -132,7 +132,7 @@
         left: 0;
         width: 100dvw;
         height: 100dvh;
-        overflow-y: auto;
+        overflow-y: scroll;
         overflow-anchor: none;
         clip-path: inset(0 0 round clamp(16px, 10vw, 48px));
       }

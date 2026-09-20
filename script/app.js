@@ -327,7 +327,7 @@ async function computeResult() {
     const expectedLocalPressureMIN = Math.round(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1) + décalage_hPa);
     const expectedLocalPressureMAX = Math.round(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1) + décalage_hPa);
     const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ? 
-    ` de ${expectedLocalPressureMIN} hPa` : 
+    `de ${expectedLocalPressureMIN} hPa` : 
     `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
 
     
@@ -383,7 +383,7 @@ async function computeResult() {
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '. ',
 
-      'Votre montre devrait indiquer une pression locale',
+      'Votre montre devrait indiquer une pression locale ',
       messageExpectedLocalPressure, 
       `, idéalement ${expectedLocalPressure.toFixed(1)} hPa. `,
 

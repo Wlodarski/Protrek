@@ -3,9 +3,12 @@ const DATABASE_VERSION = 1;
 const STORE_NAME = 'settings';
 const API_KEY_NAME = 'weatherApiKey';
 const MAP_KEY_NAME = 'mapApiKey';
+const CAL_ERROR_NAME = 'cal_error';
+
 const URL_PARAMS = {
   [API_KEY_NAME]: 'API',
-  [MAP_KEY_NAME]: 'MAP'
+  [MAP_KEY_NAME]: 'MAP',
+  [CAL_ERROR_NAME] : 'CAL' 
 };
 
 function openDatabase() {
@@ -19,7 +22,6 @@ function openDatabase() {
   });
 }
 
-// Fonction utilitaire pour envoyer les logs au statut global
 function dispatchStorageStatus(message, type = 'info') {
   window.dispatchEvent(new CustomEvent('gps-status', {
     detail: { message, type }
@@ -27,7 +29,7 @@ function dispatchStorageStatus(message, type = 'info') {
 }
 
 export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
-  if (!apiKey || !keyName) return;
+  if (apiKey === undefined || apiKey === null || !keyName) return;
   let database;
   try {
     database = await openDatabase();
@@ -55,9 +57,11 @@ export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
       dispatchStorageStatus("Clé API Weather sauvegardée avec succès.", "success");
     } else if (keyName === MAP_KEY_NAME) {
       dispatchStorageStatus("Clé API Map sauvegardée avec succès.", "success");
+    } else if (keyName === CAL_ERROR_NAME) { 
+      dispatchStorageStatus("Erreur de calibration sauvegardée avec succès.", "success");
     }
   } catch (error) {
-    dispatchStorageStatus(`Échec de sauvegarde de la clé API : ${error.message}`, "error");
+    dispatchStorageStatus(`Échec de sauvegarde du paramètre : ${error.message}`, "error");
   } finally {
     database?.close();
   }
@@ -67,13 +71,19 @@ async function getStoredApiKey(keyName, errorLabel) {
   let database;
   try {
     database = await openDatabase();
-    const apiKey = await new Promise((resolve, reject) => {
+    let apiKey = await new Promise((resolve, reject) => {
       const request = database.transaction(STORE_NAME, 'readonly')
         .objectStore(STORE_NAME)
         .get(keyName);
-      request.onsuccess = () => resolve(request.result || null);
+      request.onsuccess = () => resolve(request.result !== undefined ? request.result : null);
       request.onerror = () => reject(request.error);
     });
+
+    // AJOUT : S'assure que CAL reste un nombre lors de la lecture depuis IndexedDB
+    if (keyName === CAL_ERROR_NAME && apiKey !== null) {
+      const parsed = parseFloat(apiKey);
+      return isNaN(parsed) ? null : parsed;
+    }
 
     return apiKey;
   } catch (error) {
@@ -89,26 +99,81 @@ export function getApiKey() {
 }
 
 export function getMapApiKey() {
-  return getStoredApiKey(MAP_KEY_NAME, 'Map');
+  return getStoredApiKey(MAP_KEY_NAME, 'MAP');
 }
 
-async function initializeStoredApiKey(keyName, cleanUrl) {
+export function getCalError() {
+  return getStoredApiKey(CAL_ERROR_NAME, 'CAL')
+}
+
+// Interne : gère l'initialisation et applique le bon type de données
+async function processStoredApiKey(keyName, urlParamsInstance) {
   const urlParameter = URL_PARAMS[keyName];
-  const apiKey = new URLSearchParams(window.location.search).get(urlParameter);
-  if (!apiKey) return getStoredApiKey(keyName, keyName === MAP_KEY_NAME ? 'Map' : 'API');
+  let apiKey = urlParamsInstance.get(urlParameter);
+  
+  if (!apiKey) return getStoredApiKey(keyName, urlParameter || 'Paramètre');
+
+  // MODIFICATION : Conversion unique de CAL en nombre décimal si trouvé dans l'URL
+  if (keyName === CAL_ERROR_NAME) {
+    const parsedCal = parseFloat(apiKey);
+    if (isNaN(parsedCal)) {
+      dispatchStorageStatus(`Le paramètre CAL dans l'URL n'est pas un nombre valide.`, "error");
+      return getStoredApiKey(keyName, urlParameter);
+    }
+    apiKey = parsedCal;
+  }
 
   dispatchStorageStatus(`Nouvelle clé ${urlParameter} détectée dans l'URL.`, "info");
   await saveApiKey(apiKey, keyName);
-  if (cleanUrl) {
-    window.history.replaceState({}, '', window.location.pathname);
-  }
   return apiKey;
 }
 
+/**
+ * Initialise l'intégralité des configurations d'un seul coup.
+ * @param {boolean} cleanUrl - Supprime tous les paramètres de tracking de l'URL.
+ * @returns {Promise<{weatherApiKey: string|null, mapApiKey: string|null, cal_error: number|null}>}
+ */
+export async function initializeAllSettings(cleanUrl = true) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasParamsInUrl = Object.values(URL_PARAMS).some(param => urlParams.has(param));
+
+  const [weatherApiKey, mapApiKey, calError] = await Promise.all([
+    processStoredApiKey(API_KEY_NAME, urlParams),
+    processStoredApiKey(MAP_KEY_NAME, urlParams),
+    processStoredApiKey(CAL_ERROR_NAME, urlParams)
+  ]);
+
+  if (cleanUrl && hasParamsInUrl) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  return {
+    weatherApiKey,
+    mapApiKey,
+    cal_error: calError // Retournera un Float (ex: 1.25) ou null
+  };
+}
+
 export function initializeApiKey(cleanUrl = false) {
+  const urlParams = new URLSearchParams(window.location.search);
   return initializeStoredApiKey(API_KEY_NAME, cleanUrl);
 }
 
-export function initializeMapApiKey(cleanUrl = true) {
+export function initializeMapApiKey(cleanUrl = false) {
+  const urlParams = new URLSearchParams(window.location.search);
   return initializeStoredApiKey(MAP_KEY_NAME, cleanUrl);
+}
+
+export function initializeCalError(cleanUrl = true) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return initializeStoredApiKey(CAL_ERROR_NAME, cleanUrl);
+}
+
+async function initializeStoredApiKey(keyName, cleanUrl) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const result = await processStoredApiKey(keyName, urlParams);
+  if (cleanUrl && urlParams.has(URL_PARAMS[keyName])) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  return result;
 }

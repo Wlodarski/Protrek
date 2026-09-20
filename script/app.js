@@ -6,7 +6,7 @@ import {
   calculateThermalDrift,
   calculateHumidityDrift
 } from './calculation.js';
-import { initializeApiKey, initializeMapApiKey } from './api_key_storage.js';
+import { getCalError, initializeAllSettings} from './api_key_storage.js';
 import { initializeTheme } from './theme.js';
 
 
@@ -72,8 +72,7 @@ window.addEventListener('gps-status', (event) => {
 });
 
 await initializeTheme();
-await initializeApiKey(false);       // ?API=xxxxx
-await initializeMapApiKey(true);    // ?MAP=yyyyy
+await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 
 loadSavedValues();
 updateForecastCoverage(await loadForecast());
@@ -323,9 +322,10 @@ async function computeResult() {
     const totalAltitudeCorrection = pressureContribution + thermalContribution + humidityContribution;
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
     const deltaAlt = trueAltitude - calibrationAltitude;
-    const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
-    const expectedLocalPressureMIN = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.5);
-    const expectedLocalPressureMAX = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1.5);
+    const décalage_hPa = getCalError();
+    const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
+    const expectedLocalPressureMIN = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.5) + décalage_hPa;
+    const expectedLocalPressureMAX = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1.5) + décalage_hPa;
 
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
@@ -380,7 +380,7 @@ async function computeResult() {
       '. ',
 
       'Votre montre devrait indiquer une pression locale entre ',
-      `${expectedLocalPressureMIN.toFixed(1)} hPa`, 
+      `${expectedLocalPressureMIN.toFixed(1)} hPa`,
       ' et ',
       `${expectedLocalPressureMAX.toFixed(1)} hPa`,
       `, idéalement ${expectedLocalPressure.toFixed(1)} hPa. `,

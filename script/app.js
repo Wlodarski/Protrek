@@ -324,8 +324,12 @@ async function computeResult() {
     const deltaAlt = trueAltitude - calibrationAltitude;
     const décalage_hPa = await getCalError();
     const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
-    const expectedLocalPressureMIN = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.5) + décalage_hPa;
-    const expectedLocalPressureMAX = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1.5) + décalage_hPa;
+    const expectedLocalPressureMIN = Math.round(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1) + décalage_hPa);
+    const expectedLocalPressureMAX = Math.round(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1) + décalage_hPa);
+    const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ? 
+    ` de ${expectedLocalPressureMIN} hPa` : 
+    `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
+
     
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
@@ -379,10 +383,8 @@ async function computeResult() {
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '. ',
 
-      'Votre montre devrait indiquer une pression locale entre ',
-      `${expectedLocalPressureMIN.toFixed(1)} hPa`,
-      ' et ',
-      `${expectedLocalPressureMAX.toFixed(1)} hPa`,
+      'Votre montre devrait indiquer une pression locale',
+      messageExpectedLocalPressure, 
       `, idéalement ${expectedLocalPressure.toFixed(1)} hPa. `,
 
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée

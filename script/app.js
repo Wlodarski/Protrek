@@ -324,7 +324,8 @@ async function computeResult() {
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
     const deltaAlt = trueAltitude - calibrationAltitude;
     const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
-
+    const expectedLocalPressureMIN = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.5);
+    const expectedLocalPressureMAX = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1.5);
 
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
@@ -369,13 +370,21 @@ async function computeResult() {
       'La correction totale estimée est de ',
       Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
       ' par rapport à l’affichage actuel. ',
+
       'L’élévation a changé de ',
       Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
       '. ',
+
       'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '. ',
-      `Votre montre devrait indiquer une pression locale d'environ ${expectedLocalPressure.toFixed(1)} hPa. `,
+
+      'Votre montre devrait indiquer une pression locale entre ',
+      `${expectedLocalPressureMIN.toFixed(1)} hPa`, 
+      ' et ',
+      `${expectedLocalPressureMAX.toFixed(1)} hPa`,
+      `, idéalement ${expectedLocalPressure.toFixed(1)} hPa. `,
+
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
       Object.assign(document.createElement('span'), {
         textContent: severityText,

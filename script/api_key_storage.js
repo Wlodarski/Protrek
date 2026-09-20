@@ -154,7 +154,7 @@ export async function initializeAllSettings(cleanUrl = true) {
   };
 }
 
-export function initializeApiKey(cleanUrl = false) {
+/* export function initializeApiKey(cleanUrl = false) {
   const urlParams = new URLSearchParams(window.location.search);
   return initializeStoredApiKey(API_KEY_NAME, cleanUrl);
 }
@@ -167,7 +167,7 @@ export function initializeMapApiKey(cleanUrl = false) {
 export function initializeCalError(cleanUrl = true) {
   const urlParams = new URLSearchParams(window.location.search);
   return initializeStoredApiKey(CAL_ERROR_NAME, cleanUrl);
-}
+} */
 
 async function initializeStoredApiKey(keyName, cleanUrl) {
   const urlParams = new URLSearchParams(window.location.search);

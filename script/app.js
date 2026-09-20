@@ -322,11 +322,11 @@ async function computeResult() {
     const totalAltitudeCorrection = pressureContribution + thermalContribution + humidityContribution;
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
     const deltaAlt = trueAltitude - calibrationAltitude;
-    const décalage_hPa = getCalError();
+    const décalage_hPa = await getCalError();
     const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
     const expectedLocalPressureMIN = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.5) + décalage_hPa;
     const expectedLocalPressureMAX = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1.5) + décalage_hPa;
-
+    
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
     const nowTimeMs = Date.now();

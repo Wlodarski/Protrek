@@ -217,35 +217,43 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   const calibrationKey = calibrationTime.slice(0, 16);
   const currentKey = currentTime.slice(0, 16);
 
+  // Cas 1 : Temps dans le futur
   if (calibrationKey > currentKey) {
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: { message: 'La date de calibration est dans le futur par rapport à l’heure actuelle.', type: 'warn' }
     }));
+    return; // On stoppe ici pour éviter de cumuler les messages
   }
 
   const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
   if (forecastTimes.length === 0) return;
 
   const firstForecastKey = forecastTimes[0].slice(0, 16);
-  const InitialTime = rawData.current.validTimeLocal;
+  const initialTimeKey = rawData.current && rawData.current.validTimeLocal 
+    ? rawData.current.validTimeLocal.slice(0, 16) 
+    : firstForecastKey;
   const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
 
-  if (calibrationKey < InitialTime) {
+  // Cas 2 : Avant l'observation 'current' (Zone fixe passée)
+  if (calibrationKey < initialTimeKey) {
     window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'Anomalie importante : la calibration précède les conditions initiales !', type: 'warn' }
+      detail: { message: 'Attention : La calibration précède l’observation en direct. Valeur fixe appliquée.', type: 'error' }
     }));
   }
-  if (calibrationKey < firstForecastKey) {
+  // Cas 3 : Entre 'current' et la première prévision (Zone interpolée)
+  else if (calibrationKey < firstForecastKey) {
     window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'La calibration précède les prévisions téléchargées. Les conditions initiales sont utilisées.', type: 'info' }
+      detail: { message: 'La calibration précède les prévisions. Transition fluide calculée par interpolation d’Hermite vers l’observation en direct.', type: 'info' }
     }));
   }
-  if (calibrationKey > lastForecastKey) {
+  // Cas 4 : Après la dernière prévision (Zone fixe future)
+  else if (calibrationKey > lastForecastKey) {
     window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'La calibration dépasse les prévisions téléchargées. La dernière prévision disponible est utilisée.', type: 'warn' }
+      detail: { message: 'La calibration dépasse les prévisions téléchargées. La dernière prévision disponible est figée.', type: 'warn' }
     }));
   }
 }
+
 
 
 async function computeResult() {

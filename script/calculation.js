@@ -20,19 +20,40 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
       return null;
     }
 
-    const localTimes = rawData.validTimeLocal;
-    const values = rawData[fieldName];
+    // 1. Copie locale des données pour éviter de modifier l'objet original par référence
+    let localTimes = [...rawData.validTimeLocal];
+    let values = [...rawData[fieldName]];
+    const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
+    let timesMinutes = localTimes.map((timeStr) => parseLocalToMinutes(timeStr));
+
+    // 2. Récupération de la valeur 'current' et de son heure exacte
     const currentFieldValue = rawData.current && rawData.current[fieldName] !== undefined
       ? rawData.current[fieldName]
       : null;
-    const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
-    const timesMinutes = localTimes.map((timeStr) => parseLocalToMinutes(timeStr));
+    const currentValidTime = rawData.current && rawData.current.validTimeLocal;
 
-    if (targetMinutes <= timesMinutes[0]) {
-      return currentFieldValue !== null ? currentFieldValue : values[0];
+    // 3. Injection de 'current' au tout début si elle existe et possède un horodatage valide
+    if (currentFieldValue !== null && currentValidTime) {
+      const currentTimeMinutes = parseLocalToMinutes(currentValidTime);
+
+      // Sécurité : On s'assure que la donnée actuelle est bien chronologiquement 
+      // antérieure à la première prévision avant de l'insérer au début
+      if (timesMinutes.length === 0 || currentTimeMinutes < timesMinutes[0]) {
+        timesMinutes.unshift(currentTimeMinutes);
+        values.unshift(currentFieldValue);
+      }
     }
-    if (targetMinutes >= timesMinutes[timesMinutes.length - 1]) return values[values.length - 1];
 
+    // 4. Gestion des limites après injection
+    if (timesMinutes.length === 0) return null;
+    if (targetMinutes <= timesMinutes[0]) {
+      return values[0];
+    }
+    if (targetMinutes >= timesMinutes[timesMinutes.length - 1]) {
+      return values[values.length - 1];
+    }
+
+    // 5. Recherche de l'intervalle pour l'interpolation
     let i = 0;
     while (i < timesMinutes.length - 1 && timesMinutes[i + 1] <= targetMinutes) {
       i += 1;
@@ -50,6 +71,7 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
     const fraction = (targetMinutes - t0) / (t1 - t0);
     const tDelta = t1 - t0;
 
+    // Cas particulier de la pression (Interpolation logarithmique)
     if (fieldName === 'pressureMeanSeaLevel') {
       const logV0 = Math.log(Math.max(v0, 1e-6));
       const logV1 = Math.log(Math.max(v1, 1e-6));
@@ -57,6 +79,7 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
       return Math.exp(logInterpolated);
     }
 
+    // Interpolation d'Hermite (bénéficie maintenant d'une pente de départ ultra-précise)
     const slope0 = (v1 - vPrev) / (tDelta + (timesMinutes[i] - timesMinutes[i - 1] || tDelta));
     const slope1 = (vNext - v0) / (tDelta + (timesMinutes[i + 2] - t1 || tDelta));
     const h00 = 2 * fraction * fraction * fraction - 3 * fraction * fraction + 1;
@@ -66,6 +89,7 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
 
     return h00 * v0 + h10 * (tDelta * slope0) + h01 * v1 + h11 * (tDelta * slope1);
   }
+
 
 export function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
     if (!rawData || !Array.isArray(rawData.validTimeLocal) || rawData.validTimeLocal.length === 0) {

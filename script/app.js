@@ -1,7 +1,7 @@
 import {
   calculateAltitudeFromPressure,
   getValueAtTime,
-  usesCurrentConditionsForTime,
+  calculatePressureAtAltitude,
   calculatePressureDrift,
   calculateThermalDrift,
   calculateHumidityDrift
@@ -229,8 +229,8 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   if (forecastTimes.length === 0) return;
 
   const firstForecastKey = forecastTimes[0].slice(0, 16);
-  const initialTimeKey = rawData.current && rawData.current.validTimeLocal 
-    ? rawData.current.validTimeLocal.slice(0, 16) 
+  const initialTimeKey = rawData.current && rawData.current.validTimeLocal
+    ? rawData.current.validTimeLocal.slice(0, 16)
     : firstForecastKey;
   const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
 
@@ -261,14 +261,15 @@ async function computeResult() {
   const calibrationAltitude = Number(altitudeInput.value);
   const currentAltitude = Number(currentAltitudeInput.value);
 
+
   const SEVERITY_QUALIFIERS = {
-  0: "Indicateur de sévérité météo indisponible.",
-  1: "Les conditions météo sont stables et calmes.",
-  2: "Une perturbation météo mineure est en cours.",
-  3: "Instabilité barométrique détectée (risque d'orage) ; les lectures peuvent fluctuer.",
-  4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d'altitude.",
-  5: "Conditions météo extrêmes ; l'altimètre barométrique est fortement perturbé."
-};
+    0: "Indicateur de sévérité météo indisponible.",
+    1: "Les conditions météo sont stables et calmes.",
+    2: "Une perturbation météo mineure est en cours.",
+    3: "Instabilité barométrique détectée (risque d'orage) ; les lectures peuvent fluctuer.",
+    4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d'altitude.",
+    5: "Conditions météo extrêmes ; l'altimètre barométrique est fortement perturbé."
+  };
 
 
   // 1. Validation initiale des champs via le journal de bord
@@ -322,6 +323,8 @@ async function computeResult() {
     const totalAltitudeCorrection = pressureContribution + thermalContribution + humidityContribution;
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
     const deltaAlt = trueAltitude - calibrationAltitude;
+    const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
+
 
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
@@ -372,14 +375,15 @@ async function computeResult() {
       'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '. ',
+      `Votre montre devrait indiquer une pression locale d'environ ${expectedLocalPressure.toFixed(1)} hPa. `,
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
-      Object.assign(document.createElement('span'), { 
+      Object.assign(document.createElement('span'), {
         textContent: severityText,
-        style: severityCurrent === 0 
-          ? 'color: var(--text-muted, #7f8c8d); font-style: italic;' 
-          : (severityCurrent === 3 
-              ? 'color: var(--status-warning, #f39c12); font-weight: 500;' 
-              : (severityCurrent >= 4 ? 'color: var(--status-error, #e74c3c); font-weight: 600;' : ''))
+        style: severityCurrent === 0
+          ? 'color: var(--text-muted, #7f8c8d); font-style: italic;'
+          : (severityCurrent === 3
+            ? 'color: var(--status-warning, #f39c12); font-weight: 500;'
+            : (severityCurrent >= 4 ? 'color: var(--status-error, #e74c3c); font-weight: 600;' : ''))
       })
     );
     resultDetailsEl.replaceChildren(detailsText);

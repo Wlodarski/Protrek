@@ -125,3 +125,18 @@ export function calculateHumidityDrift(humidityCal, humidityCurrent, hTheoretica
     return 0.25 * (humidityTermCurrent - humidityTermCal) * (hTheoreticalCurrent / 1000);
   }
 
+/**
+ * Calcule la pression locale absolue attendue à une altitude donnée
+ * à partir de la pression mesurée au niveau de la mer (P0).
+ */
+export function calculatePressureAtAltitude(pSeaLevel_hpa, altitude_m) {
+  if (pSeaLevel_hpa <= 0 || altitude_m === null) return null;
+  const L_LAPSE = 0.0065;
+  const EXPOSANT = 0.190284;
+  const T0_K = 288.15;
+  
+  const ratio = (1 - (altitude_m * L_LAPSE) / T0_K) ** (1 / EXPOSANT);
+  const pLocal_hpa = pSeaLevel_hpa * ratio;
+  
+  return Number.isFinite(pLocal_hpa) ? pLocal_hpa : null;
+}

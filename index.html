@@ -228,9 +228,11 @@
       height: auto;
       object-fit: contain;
       touch-action: auto;
-      transition: 2s ease-in;
-
     }
+
+      html[data-theme="dark"] .carte {
+        filter: invert(1);
+      }
 
     .carte:hover {
       object-fit: none;

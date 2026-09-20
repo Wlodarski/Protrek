@@ -261,6 +261,16 @@ async function computeResult() {
   const calibrationAltitude = Number(altitudeInput.value);
   const currentAltitude = Number(currentAltitudeInput.value);
 
+  const SEVERITY_QUALIFIERS = {
+  0: "Indicateur de sévérité météo indisponible.",
+  1: "Les conditions météo sont stables et calmes.",
+  2: "Une perturbation météo mineure est en cours.",
+  3: "Instabilité barométrique détectée (risque d'orage) ; les lectures peuvent fluctuer.",
+  4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d'altitude.",
+  5: "Conditions météo extrêmes ; l'altimètre barométrique est fortement perturbé."
+};
+
+
   // 1. Validation initiale des champs via le journal de bord
   if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
     window.dispatchEvent(new CustomEvent('gps-status', {
@@ -278,6 +288,7 @@ async function computeResult() {
     const targetTimeStr = buildCurrentTimeString();
     const calTimeStr = buildTimeStringFromInput(timeValue);
 
+    // Récupération des données interpolées (Logarithmique pour MSL, Hermite pour le reste)
     const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
     const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
     const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
@@ -285,11 +296,18 @@ async function computeResult() {
     const humidityCal = getValueAtTime(rawData, calTimeStr, 'relativeHumidity');
     const humidityCurrent = getValueAtTime(rawData, targetTimeStr, 'relativeHumidity');
 
+    // Récupération du niveau de sévérité météo (0 par défaut si absent ou indisponible)
+    const severityValue = getValueAtTime(rawData, targetTimeStr, 'wxSeverity');
+    const severityCurrent = severityValue ?? 0;
+    const severityText = SEVERITY_QUALIFIERS[severityCurrent] || SEVERITY_QUALIFIERS;
+
+
     if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent]
       .some((value) => value === null || value === undefined)) {
       throw new Error('Données météo manquantes ou indisponibles pour les heures demandées.');
     }
 
+    // Calculs d'altimétrie et de dérives barométriques
     const hTheoreticalCal = calculateAltitudeFromPressure(pWeatherCal);
     const hTheoreticalCurrent = calculateAltitudeFromPressure(pWeatherCurrent);
     const pressureDrift = calculatePressureDrift(hTheoreticalCal, hTheoreticalCurrent);
@@ -336,12 +354,13 @@ async function computeResult() {
     // 5. Union des segments avec l'API internationale
     const timeText = listFormatter.format(timeSegments);
 
-    // 6. Mise à jour de l'affichage des résultats graphiques
+    // 5. Mise à jour de l'affichage des résultats graphiques principaux
     resultValueEl.innerHTML = `${Math.round(trueAltitude)} m`;
     pressureMetricEl.textContent = formatSignedMetric(pressureContribution, 1);
     thermalMetricEl.textContent = formatSignedMetric(thermalContribution, 1);
     humidityMetricEl.textContent = formatSignedMetric(humidityContribution, 1);
 
+    // 6. Construction et injection du paragraphe de détails qualifié
     const detailsText = document.createElement('small');
     detailsText.append(
       'La correction totale estimée est de ',
@@ -352,18 +371,26 @@ async function computeResult() {
       '. ',
       'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
-      '.'
+      '. ',
+      // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
+      Object.assign(document.createElement('span'), { 
+        textContent: severityText,
+        style: severityCurrent === 0 
+          ? 'color: var(--text-muted, #7f8c8d); font-style: italic;' 
+          : (severityCurrent === 3 
+              ? 'color: var(--status-warning, #f39c12); font-weight: 500;' 
+              : (severityCurrent >= 4 ? 'color: var(--status-error, #e74c3c); font-weight: 600;' : ''))
+      })
     );
     resultDetailsEl.replaceChildren(detailsText);
 
-    // 7. NETTOYAGE ET CONFIRMATION DES MÉTRIQUES
-    // Étape A : On vide l'historique de chargement précédent du panneau statusEl
+    // 7. Nettoyage et confirmation des métriques de logs
     if (statusEl) statusEl.replaceChildren();
 
-    // Étape B : On lance l'analyse de couverture (elle enverra d'elle-même les avertissements au statut si nécessaire)
+    // Lance l'analyse réécrite de couverture temporelle
     getCalibrationCoverageWarning(rawData, calTimeStr, targetTimeStr);
 
-    // Étape C : On ajoute le message de confirmation final pour valider la mise à jour
+    // Notification finale de succès dans le journal de bord
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: {
         message: `Correction calculée à ${formatForecastTime(targetTimeStr, true)}`,
@@ -385,6 +412,7 @@ async function computeResult() {
     resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué en raison d’une erreur technique.';
   }
 }
+
 
 
 function loadSavedValues() {

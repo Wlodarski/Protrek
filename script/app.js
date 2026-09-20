@@ -324,8 +324,9 @@ async function computeResult() {
     const deltaAlt = trueAltitude - calibrationAltitude;
     const décalage_hPa = await getCalError();
     const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.5) + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 1.5) + décalage_hPa);
+    // du sol (0) à hauteur d'homme (~1.80 m)
+    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.8) + décalage_hPa);
+    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 0) + décalage_hPa);
     const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ? 
     `de ${expectedLocalPressureMIN} hPa` : 
     `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;

@@ -263,3 +263,87 @@ export async function fetchCombinedForecast() {
     ...forecast
   };
 }
+
+/**
+ * Construit l'URL d'appel pour l'API geoapify.com avec les paramètres requis.
+ */
+async function buildMapURL() {
+  const mapKey = await getMapApiKey();
+  if (!mapKey) {
+    throw new Error('[CARTE] Aucune clé MAP configurée. Utilisez ?MAP=votre clé.');
+  }
+  const mapURL = `${STATIC_MAP_API_URL}?apiKey=${mapKey}`;
+  return mapURL;
+}
+
+export async function fetchMap() {
+  try {
+    // 1. Récupère la position (depuis le cache ou le GPS si nécessaire)
+    const location = await getStoredLocation(); 
+    if (!location) {
+      throw new Error("Impossible d'obtenir une position géographique valide.");
+    }
+
+    const url = await buildMapURL();
+
+    const postJSON = {
+      "style": "osm-liberty",
+      "scaleFactor": 2,
+      "width": 800,
+      "height": 600,
+      "center": {
+        "lat": location.latitude,
+        "lon": location.longitude
+      },
+      "zoom": 14,
+      "markers": [
+        {
+          "lat": location.latitude,
+          "lon": location.longitude,
+          "color": "#ff0000",
+          "size": "42"
+        }
+      ]
+    };
+
+    const request = new Request(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(postJSON) // <-- CORRIGÉ : Le body est maintenant activé
+    });
+
+    dispatchGpsStatus("[CARTE] Téléchargement de la carte statique...", 'info');
+    const response = await fetch(request);
+
+    // 2. Vérification standard de la réponse HTTP
+    if (!response.ok) { // GESTION DES ERREURS (400, 401, 429, 500, etc.)
+      const contentType = response.headers.get("content-type");
+
+      // Si le serveur renvoie du JSON, on extrait les détails de l'erreur (statusCode, error, message)
+      if (contentType && contentType.includes("application/json")) {
+        const errorJson = await response.json();
+        throw {
+          isApiError: true,
+          statusCode: errorJson.statusCode || response.status,
+          error: errorJson.error || "Erreur API",
+          message: errorJson.message || "Aucun message fourni"
+        };
+      } else {
+        // Sécurité si le serveur renvoie du texte brut ou du HTML
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status} : ${errorText}`);
+      }
+    }
+
+    // 3. Extraction de l'image sous forme de Blob
+    const imageBlob = await response.blob();
+    dispatchGpsStatus("[CARTE] Carte récupérée avec succès.", 'info');
+
+    // 4. Retourne une URL locale utilisable directement dans un attribut src="..."
+    return URL.createObjectURL(imageBlob);
+
+  } catch (e) {
+    dispatchGpsStatus(`[Carte] Échec de la récupération : ${e.message}`, "error");
+    return null;
+  }
+}

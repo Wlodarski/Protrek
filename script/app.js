@@ -459,7 +459,7 @@ refreshBtn.addEventListener('click', async () => {
   if (statusEl) statusEl.replaceChildren();
 
   try {
-    const { fetchCombinedForecast } = await import('./weather_client.js');
+    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js');
     const forecast = await fetchCombinedForecast();
     localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
     updateForecastCoverage(forecast);
@@ -473,6 +473,9 @@ refreshBtn.addEventListener('click', async () => {
       }));
     }
     timeInput.value = buildCurrentTimeString().slice(0, 16);
+
+    // Met à jour la carte
+    document.getElementById("carte").src = await fetchMap();
 
     // Message final de validation
     window.dispatchEvent(new CustomEvent('gps-status', {
@@ -512,8 +515,8 @@ window.addEventListener('online', async () => {
     // icanhazip.com accepte le CORS et répond ultra-rapidement
     const response = await fetch("https://icanhazip.com", {
       method: "GET",
-      mode: "cors", 
-      cache: "no-store" 
+      mode: "cors",
+      cache: "no-store"
     });
 
     if (response.ok) {
@@ -536,3 +539,4 @@ window.addEventListener('offline', () => {
   console.log('🔴 Pas d\'Internet...');
   turnOnOffbtn(false);
 });
+

@@ -477,8 +477,9 @@ refreshBtn.addEventListener('click', async () => {
 
     // Valeurs par défaut pour la calibration
     const location = getStoredLocation();
-    if (Number.isFinite(location.altitude)) {
-      calibrationAltitude.value = location.altitude;
+    if (location && Number.isFinite(location.altitude)) {
+      // CORRIGÉ : Utilisation du bon pointeur d'élément de formulaire (altitudeInput)
+      altitudeInput.value = location.altitude;
       window.dispatchEvent(new CustomEvent('gps-status', {
         detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
       }));
@@ -487,16 +488,15 @@ refreshBtn.addEventListener('click', async () => {
 
     // Met à jour la carte
     const nouvelleCarteURL = await fetchMap();
-    const carte = document.getElementById("carte");
 
-    if (nouvelleCarteURL && carte) {
-      // Nettoie l'ancienne URL éphémère de la mémoire du navigateur avant d'assigner la nouvelle
-      if (carte.src.startsWith('blob:')) {
-        URL.revokeObjectURL(carte.src);
+    // CORRIGÉ : Utilisation de carteElement déjà déclaré ou récupération sécurisée
+    if (nouvelleCarteURL && carteElement) {
+      if (carteElement.src.startsWith('blob:')) {
+        URL.revokeObjectURL(carteElement.src);
       }
-      carte.src = nouvelleCarteURL;
-    } else if (carte && !carte.src) {
-      carte.src = "img\\cartevide.webp";
+      carteElement.src = nouvelleCarteURL;
+    } else if (carteElement && !carteElement.src) {
+      carteElement.src = "img\\cartevide.webp";
     }
 
 

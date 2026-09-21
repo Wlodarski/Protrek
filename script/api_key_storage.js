@@ -165,3 +165,23 @@ export async function getStoredMapUrl() {
   }
 }
 
+/**
+ * Supprime proprement la carte du cache IndexedDB et notifie l'application.
+ */
+export async function clearMapCache() {
+  let database;
+  try {
+    database = await openDatabase();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, 'readwrite');
+      const request = transaction.objectStore(STORE_NAME).delete(MAP_BLOB_NAME);
+      request.onerror = () => reject(request.error);
+      transaction.oncomplete = resolve;
+    });
+    dispatchStorageStatus("Cache de la carte nettoyé automatiquement (données obsolètes).", "info");
+  } catch (error) {
+    console.error("Erreur lors du vidage du cache de la carte :", error);
+  } finally {
+    database?.close();
+  }
+}

@@ -6,7 +6,7 @@ import {
   calculateThermalDrift,
   calculateHumidityDrift
 } from './calculation.js';
-import { getCalError, initializeAllSettings} from './api_key_storage.js';
+import { getCalError, initializeAllSettings } from './api_key_storage.js';
 import { initializeTheme } from './theme.js';
 
 
@@ -327,11 +327,11 @@ async function computeResult() {
     // du sol (0) à hauteur d'homme (~1.80 m)
     const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.8) + décalage_hPa);
     const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 0) + décalage_hPa);
-    const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ? 
-    `de ${expectedLocalPressureMIN} hPa` : 
-    `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
+    const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
+      `de ${expectedLocalPressureMIN} hPa` :
+      `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
 
-    
+
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
     const nowTimeMs = Date.now();
@@ -385,7 +385,7 @@ async function computeResult() {
       '. ',
 
       'Votre montre devrait indiquer une pression locale ',
-      messageExpectedLocalPressure, 
+      messageExpectedLocalPressure,
       `, idéalement ${expectedLocalPressure.toFixed(1)} hPa. `,
 
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
@@ -500,11 +500,36 @@ function turnOnOffbtn(isOn = false) {
   }
 }
 
+// Vérification initiale au chargement de la page
 turnOnOffbtn(navigator.onLine);
 
-window.addEventListener('online', () => {
-  console.log('🟢 On a Internet !');
-  turnOnOffbtn(true);
+// Écouteur d'événement asynchrone pour le retour du réseau
+window.addEventListener('online', async () => {
+  console.log('On a une connexion réseau...');
+
+  try {
+    // Utilisation de await pour attendre la vraie réponse du réseau
+    // icanhazip.com accepte le CORS et répond ultra-rapidement
+    const response = await fetch("https://icanhazip.com", {
+      method: "GET",
+      mode: "cors", 
+      cache: "no-store" 
+    });
+
+    if (response.ok) {
+      console.log('🟢 On a Internet !');
+      turnOnOffbtn(true);
+    } else {
+      // Cas où le serveur répond mais avec une erreur (ex: portail captif)
+      console.log('🔴 Réseau connecté mais pas de réponse Internet...');
+      turnOnOffbtn(false);
+    }
+
+  } catch (error) {
+    // Tombe ici si la requête échoue complètement (pas d'Internet, DNS en panne...)
+    console.log('🔴 Pas d\'Internet...');
+    turnOnOffbtn(false);
+  }
 });
 
 window.addEventListener('offline', () => {

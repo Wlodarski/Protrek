@@ -6,7 +6,7 @@ import {
   calculateThermalDrift,
   calculateHumidityDrift
 } from './calculation.js';
-import { getCalError, initializeAllSettings, getStoredMapUrl } from './api_key_storage.js';
+import { getCalError, initializeAllSettings, getStoredMapUrl, clearMapCache } from './api_key_storage.js';
 import { initializeTheme } from './theme.js';
 
 
@@ -76,6 +76,41 @@ await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 
 loadSavedValues();
 updateForecastCoverage(await loadForecast());
+
+// --- MÉCANISME DE NETTOYAGE AUTOMATIQUE ---
+async function checkCacheValidity() {
+  const storedForecast = localStorage.getItem(FORECAST_STORAGE_KEY);
+  if (!storedForecast) return;
+
+  try {
+    const forecastData = JSON.parse(storedForecast);
+    
+    if (forecastData && forecastData.generatedAt) {
+      const dateGeneration = new Date(forecastData.generatedAt);
+      const maintenant = new Date();
+      
+      // Calcul de la différence en heures
+      const differenceHeures = (maintenant - dateGeneration) / (1000 * 60 * 60);
+      
+      // Si les données ont plus de 72 heures (3 jours), on purge le cache
+      if (differenceHeures >= 72) {
+        localStorage.removeItem(FORECAST_STORAGE_KEY);
+        await clearMapCache();
+        window.dispatchEvent(new CustomEvent('gps-status', {
+          detail: { message: 'Données météo et carte expirées. Cache réinitialisé.', type: 'warn' }
+        }));
+      }
+    }
+  } catch (e) {
+    // En cas de JSON corrompu en mémoire, on applique une sécurité
+    localStorage.removeItem(FORECAST_STORAGE_KEY);
+    await clearMapCache();
+  }
+}
+
+// Exécution immédiate du nettoyage avant d'afficher les éléments
+await checkCacheValidity();
+// ------------------------------------------
 
 // Charge la carte stockée en mémoire IndexedDB s'il y en a une
 const carteElement = document.getElementById("carte");

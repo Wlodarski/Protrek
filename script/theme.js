@@ -1,21 +1,8 @@
-const DATABASE_NAME = 'protrek';
-const DATABASE_VERSION = 1;
-const STORE_NAME = 'settings';
+// theme.js
+import { openDatabase, STORE_NAME } from './database.js';
+
 const THEME_KEY = 'theme';
 const THEMES = ['light', 'dark', 'system'];
-
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE_NAME)) {
-        request.result.createObjectStore(STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
 
 async function readTheme() {
   const database = await openDatabase();
@@ -52,7 +39,6 @@ export async function initializeTheme() {
   const themeToggle = document.getElementById('themeToggle');
   if (!themeToggle) return;
 
-  // CORRECTION : Transmission des notifications via les événements du journal de bord
   const updateStatus = (message, type = 'info') => {
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: { message, type }

@@ -13,6 +13,7 @@ const STATIC_FILES = [
   './script/main.js',
   './script/app.js',
   './script/calculation.js',
+  './script/database.js',
   './script/api_key_storage.js',
   './script/weather_client.js',
   './script/theme.js',

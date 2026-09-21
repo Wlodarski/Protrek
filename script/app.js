@@ -6,7 +6,7 @@ import {
   calculateThermalDrift,
   calculateHumidityDrift
 } from './calculation.js';
-import { getCalError, initializeAllSettings } from './api_key_storage.js';
+import { getCalError, initializeAllSettings, getStoredMapUrl } from './api_key_storage.js';
 import { initializeTheme } from './theme.js';
 
 
@@ -76,6 +76,17 @@ await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 
 loadSavedValues();
 updateForecastCoverage(await loadForecast());
+
+// Charge la carte stockée en mémoire IndexedDB s'il y en a une
+const carteElement = document.getElementById("carte");
+if (carteElement) {
+  const cachedMapUrl = await getStoredMapUrl();
+  if (cachedMapUrl) {
+    carteElement.src = cachedMapUrl;
+  } else {
+    carteElement.src = "img\\cartevide.webp";
+  }
+}
 
 
 async function loadForecast() {
@@ -475,7 +486,19 @@ refreshBtn.addEventListener('click', async () => {
     timeInput.value = buildCurrentTimeString().slice(0, 16);
 
     // Met à jour la carte
-    document.getElementById("carte").src = await fetchMap();
+    const nouvelleCarteURL = await fetchMap();
+    const carte = document.getElementById("carte");
+
+    if (nouvelleCarteURL && carte) {
+      // Nettoie l'ancienne URL éphémère de la mémoire du navigateur avant d'assigner la nouvelle
+      if (carte.src.startsWith('blob:')) {
+        URL.revokeObjectURL(carte.src);
+      }
+      carte.src = nouvelleCarteURL;
+    } else if (carte && !carte.src) {
+      carte.src = "img\\cartevide.webp";
+    }
+
 
     // Message final de validation
     window.dispatchEvent(new CustomEvent('gps-status', {

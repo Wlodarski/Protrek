@@ -3,12 +3,13 @@ const DATABASE_VERSION = 1;
 const STORE_NAME = 'settings';
 const API_KEY_NAME = 'weatherApiKey';
 const MAP_KEY_NAME = 'mapApiKey';
+const MAP_BLOB_NAME = 'mapBlob';
 const CAL_ERROR_NAME = 'cal_error';
 
 const URL_PARAMS = {
   [API_KEY_NAME]: 'API',
   [MAP_KEY_NAME]: 'MAP',
-  [CAL_ERROR_NAME] : 'CAL' 
+  [CAL_ERROR_NAME]: 'CAL'
 };
 
 function openDatabase() {
@@ -57,7 +58,7 @@ export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
       dispatchStorageStatus("Clé API Weather sauvegardée avec succès.", "success");
     } else if (keyName === MAP_KEY_NAME) {
       dispatchStorageStatus("Clé API Map sauvegardée avec succès.", "success");
-    } else if (keyName === CAL_ERROR_NAME) { 
+    } else if (keyName === CAL_ERROR_NAME) {
       dispatchStorageStatus("Erreur de calibration sauvegardée avec succès.", "success");
     }
   } catch (error) {
@@ -110,7 +111,7 @@ export function getCalError() {
 async function processStoredApiKey(keyName, urlParamsInstance) {
   const urlParameter = URL_PARAMS[keyName];
   let apiKey = urlParamsInstance.get(urlParameter);
-  
+
   if (!apiKey) return getStoredApiKey(keyName, urlParameter || 'Paramètre');
 
   // MODIFICATION : Conversion unique de CAL en nombre décimal si trouvé dans l'URL
@@ -176,4 +177,48 @@ async function initializeStoredApiKey(keyName, cleanUrl) {
     window.history.replaceState({}, '', window.location.pathname);
   }
   return result;
+}
+
+// Sauvegarde le Blob de l'image directement dans IndexedDB
+export async function saveMapBlob(blob) {
+  if (!(blob instanceof Blob)) return;
+  let database;
+  try {
+    database = await openDatabase();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, 'readwrite');
+      const request = transaction.objectStore(STORE_NAME).put(blob, MAP_BLOB_NAME);
+      request.onerror = () => reject(request.error);
+      transaction.oncomplete = resolve;
+    });
+    dispatchStorageStatus("Carte enregistrée dans le cache IndexedDB.", "info");
+  } catch (error) {
+    console.error("Erreur de stockage du Blob carte:", error);
+  } finally {
+    database?.close();
+  }
+}
+
+// Récupère le Blob de la carte et génère une URL locale éphémère (ObjectURL)
+export async function getStoredMapUrl() {
+  let database;
+  try {
+    database = await openDatabase();
+    const blob = await new Promise((resolve, reject) => {
+      const request = database.transaction(STORE_NAME, 'readonly')
+        .objectStore(STORE_NAME)
+        .get(MAP_BLOB_NAME);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    if (blob instanceof Blob) {
+      return URL.createObjectURL(blob);
+    }
+    return null;
+  } catch (error) {
+    return null;
+  } finally {
+    database?.close();
+  }
 }

@@ -279,7 +279,7 @@ async function buildMapURL() {
 export async function fetchMap() {
   try {
     // 1. Récupère la position (depuis le cache ou le GPS si nécessaire)
-    const location = await getStoredLocation(); 
+    const location = await getStoredLocation();
     if (!location) {
       throw new Error("Impossible d'obtenir une position géographique valide.");
     }
@@ -339,8 +339,13 @@ export async function fetchMap() {
     const imageBlob = await response.blob();
     dispatchGpsStatus("[CARTE] Carte récupérée avec succès.", 'info');
 
+    // AJOUT : Sauvegarde le blob dans IndexedDB en arrière-plan
+    const { saveMapBlob } = await import('./api_key_storage.js');
+    await saveMapBlob(imageBlob);
+
     // 4. Retourne une URL locale utilisable directement dans un attribut src="..."
     return URL.createObjectURL(imageBlob);
+
 
   } catch (e) {
     dispatchGpsStatus(`[Carte] Échec de la récupération : ${e.message}`, "error");

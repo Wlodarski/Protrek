@@ -286,7 +286,7 @@ export async function fetchMap() {
 
     const url = await buildMapURL();
 
-    const postJSON = {
+    const postJSON = {  // https://apidocs.geoapify.com/docs/maps/static/
       "style": "osm-liberty",
       "scaleFactor": 2,
       "width": 800,

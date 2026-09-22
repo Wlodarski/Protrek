@@ -84,14 +84,14 @@ async function checkCacheValidity() {
 
   try {
     const forecastData = JSON.parse(storedForecast);
-    
+
     if (forecastData && forecastData.generatedAt) {
       const dateGeneration = new Date(forecastData.generatedAt);
       const maintenant = new Date();
-      
+
       // Calcul de la différence en heures
       const differenceHeures = (maintenant - dateGeneration) / (1000 * 60 * 60);
-      
+
       // Si les données ont plus de 72 heures (3 jours), on purge le cache
       if (differenceHeures >= 72) {
         localStorage.removeItem(FORECAST_STORAGE_KEY);
@@ -370,9 +370,12 @@ async function computeResult() {
     const deltaAlt = trueAltitude - calibrationAltitude;
     const décalage_hPa = await getCalError();
     const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
-    // du sol (0) à hauteur d'homme (~1.80 m)
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 1.8) + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 0) + décalage_hPa);
+    //TODO: test et ~ wxSeverity
+    // selon mon test : ±0.4 hPa (~3.4 m) par temps calme
+    // je suppose erreur = arrondi autrement // pas bonne logique
+    const toleranceHPa = severityValue == 1 ? 0.4 : 0.5;
+    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) - toleranceHPa + décalage_hPa);
+    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + toleranceHPa + décalage_hPa);
     const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
       `de ${expectedLocalPressureMIN} hPa` :
       `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;

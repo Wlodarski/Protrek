@@ -545,8 +545,9 @@ async function computeResult() {
     const trueAltitude = currentAltitude + totalAltitudeCorrection;
     const deltaAlt = trueAltitude - calibrationAltitude;
     const décalage_hPa = await getCalError();
-    const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
-    //TODO: test et ~ wxSeverity
+
+    const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
+    const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
     // selon mon test : ±0.4 hPa (~3.4 m) par temps calme
     const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 3.4) + décalage_hPa);
     const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 3.4) + décalage_hPa);
@@ -599,17 +600,29 @@ async function computeResult() {
       Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
       ' par rapport à l’affichage actuel. ',
 
+      // Object.assign(document.createElement('br')),
+      // Object.assign(document.createElement('br')),
+
       'L’élévation a changé de ',
       Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
       '. ',
+      // Object.assign(document.createElement('br')),
+      // Object.assign(document.createElement('br')),
 
       'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '. ',
+      Object.assign(document.createElement('br')),
+      Object.assign(document.createElement('br')),
 
       'Votre montre devrait indiquer une pression locale ',
       messageExpectedLocalPressure,
-      `, idéalement ${expectedLocalPressure.toFixed(1)} hPa. `,
+      `, idéalement `,
+      Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
+      (décalage_hPa !==0) ?` (${calculatePressureAltitude.toFixed(1)} hPa + ${décalage_hPa} hPa).`:'.',
+
+      Object.assign(document.createElement('br')),
+      Object.assign(document.createElement('br')),
 
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
       Object.assign(document.createElement('span'), {

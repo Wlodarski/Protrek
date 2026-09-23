@@ -482,10 +482,10 @@ function loadSavedValues() {
   const savedTime = localStorage.getItem(STORAGE_KEYS.time);
   const calibrationTime = savedTime
     ? buildTimeStringFromInput(savedTime).slice(0, 16)
-    : buildTimeStringFromInput().slice(0, 16); // FIXME: ??????
+    : null; // FIXME: je penses que je préfère rien pour refléter la situation réelle
   timeInput.value = calibrationTime;
-  altitudeInput.value = localStorage.getItem(STORAGE_KEYS.altitude) || '0'; // FIXME: ??????
-  currentAltitudeInput.value = localStorage.getItem(STORAGE_KEYS.currentAltitude) || '0'; // FIXME: ??????
+  altitudeInput.value = localStorage.getItem(STORAGE_KEYS.altitude) || null; // FIXME: ??????
+  currentAltitudeInput.value = localStorage.getItem(STORAGE_KEYS.currentAltitude) || null; // FIXME: ??????
 }
 
 form.addEventListener('submit', async (event) => {

@@ -619,7 +619,7 @@ async function computeResult() {
       messageExpectedLocalPressure,
       `, idéalement `,
       Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
-      (décalage_hPa !==0) ?` (${calculatePressureAltitude.toFixed(1)} hPa + ${décalage_hPa} hPa).`:'.',
+      (décalage_hPa !==0) ?` (${calculatePressureAltitude.toFixed(1)} hPa, décalé de ${décalage_hPa} hPa).`:'.',
 
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),

@@ -3,6 +3,9 @@ const DATABASE_NAME = 'protrek';
 const DATABASE_VERSION = 1;
 export const STORE_NAME = 'settings';
 
+/**
+ * Ouvre la base IndexedDB du projet et crée le magasin si nécessaire.
+ */
 export function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);

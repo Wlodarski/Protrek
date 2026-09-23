@@ -37,7 +37,7 @@ function getStoredLocation() {
 }
 
 /**
- * Génère la position géographique par défaut.
+ * Génère la position géographique par défaut lorsque le GPS n'est pas disponible.
  */
 function getDefaultLocation() {
   const [latitude, longitude, altitude] = DEFAULT_GEOCODE.split(',').map(Number);
@@ -85,7 +85,7 @@ async function altitudeGLO(lat, lon) {
 }
 
 /**
- * Émet un événement personnalisé pour notifier l'application de la progression du GPS
+ * Émet un événement personnalisé pour notifier l'application de la progression du GPS.
  */
 function dispatchGpsStatus(message, type = 'info') {
   if (type === 'warn') console.warn(message);
@@ -98,7 +98,7 @@ function dispatchGpsStatus(message, type = 'info') {
 }
 
 /**
- * Récupère la géolocalisation de l'utilisateur de manière asynchrone.
+ * Récupère la géolocalisation de l'utilisateur en plusieurs essais jusqu'à obtenir une précision suffisante.
  */
 function getUserGeocode() {
 
@@ -114,6 +114,9 @@ function getUserGeocode() {
 
     dispatchGpsStatus("Lectures multiples du GPS...", 'info');
 
+    /**
+     * Lance une tentative de mesure GPS avec une précision élevée.
+     */
     const executeAttempt = () => {
       attempts++;
       // dispatchGpsStatus(`[GPS] Tentative de mesure ${attempts}/${maxAttempts}...`, 'info');
@@ -150,6 +153,9 @@ function getUserGeocode() {
       );
     };
 
+    /**
+     * Décide s'il faut relancer une mesure GPS ou finaliser la meilleure localisation.
+     */
     const evaluateNextStep = () => {
       if (attempts < maxAttempts) {
         setTimeout(executeAttempt, 1500);
@@ -162,6 +168,9 @@ function getUserGeocode() {
       }
     };
 
+    /**
+     * Finalise la meilleure localisation trouvée et complète ses données d'altitude.
+     */
     const finalizeLocation = async (location) => {
       if (location) {
 
@@ -265,7 +274,7 @@ export async function fetchCombinedForecast() {
 }
 
 /**
- * Construit l'URL d'appel pour l'API geoapify.com avec les paramètres requis.
+ * Construit l'URL d'appel pour l'API Geoapify de carte statique.
  */
 async function buildMapURL() {
   const mapKey = await getMapApiKey();
@@ -276,6 +285,9 @@ async function buildMapURL() {
   return mapURL;
 }
 
+/**
+ * Télécharge la carte statique du point de localisation et la sauvegarde en cache.
+ */
 export async function fetchMap(location = null) {
   try {
     location ??= await getUserGeocode();

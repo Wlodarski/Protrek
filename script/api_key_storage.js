@@ -12,12 +12,18 @@ const URL_PARAMS = {
   [CAL_ERROR_NAME]: 'CAL'
 };
 
+/**
+ * Publie un message de statut dans le système d'événements de l'application.
+ */
 function dispatchStorageStatus(message, type = 'info') {
   window.dispatchEvent(new CustomEvent('gps-status', {
     detail: { message, type }
   }));
 }
 
+/**
+ * Enregistre une clé API ou un paramètre de calibration dans le stockage IndexedDB.
+ */
 export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
   if (apiKey === undefined || apiKey === null || !keyName) return;
   let database;
@@ -56,6 +62,9 @@ export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
   }
 }
 
+/**
+ * Lit une valeur stockée par nom de clé et renvoie null si elle est absente ou invalide.
+ */
 async function getStoredApiKey(keyName, errorLabel) {
   let database;
   try {
@@ -82,10 +91,22 @@ async function getStoredApiKey(keyName, errorLabel) {
   }
 }
 
+/**
+ * Retourne la clé API météo sauvegardée, ou null si elle n'existe pas.
+ */
 export function getApiKey() { return getStoredApiKey(API_KEY_NAME, 'API'); }
+/**
+ * Retourne la clé API de cartographie sauvegardée, ou null si elle n'existe pas.
+ */
 export function getMapApiKey() { return getStoredApiKey(MAP_KEY_NAME, 'MAP'); }
+/**
+ * Retourne l'écart de calibration enregistré, ou null si aucune valeur n'a été définie.
+ */
 export function getCalError() { return getStoredApiKey(CAL_ERROR_NAME, 'CAL'); }
 
+/**
+ * Priorise une valeur passée dans l'URL avant de se rabattre sur le stockage local.
+ */
 async function processStoredApiKey(keyName, urlParamsInstance) {
   const urlParameter = URL_PARAMS[keyName];
   let apiKey = urlParamsInstance.get(urlParameter);
@@ -106,6 +127,9 @@ async function processStoredApiKey(keyName, urlParamsInstance) {
   return apiKey;
 }
 
+/**
+ * Initialise tous les paramètres de configuration à partir de l'URL et du cache local.
+ */
 export async function initializeAllSettings(cleanUrl = true) {
   const urlParams = new URLSearchParams(window.location.search);
   const hasParamsInUrl = Object.values(URL_PARAMS).some(param => urlParams.has(param));
@@ -123,6 +147,9 @@ export async function initializeAllSettings(cleanUrl = true) {
   return { weatherApiKey, mapApiKey, cal_error: calError };
 }
 
+/**
+ * Sauvegarde le blob de la carte pour la réutiliser hors ligne sans refaire l'appel API.
+ */
 export async function saveMapBlob(blob) {
   if (!(blob instanceof Blob)) return;
   let database;
@@ -142,6 +169,9 @@ export async function saveMapBlob(blob) {
   }
 }
 
+/**
+ * Récupère l'URL locale d'une carte déjà mise en cache dans IndexedDB.
+ */
 export async function getStoredMapUrl() {
   let database;
   try {

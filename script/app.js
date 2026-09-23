@@ -194,6 +194,9 @@ window.addEventListener('offline', () => {
 
 
 // --- MÉCANISME DE NETTOYAGE AUTOMATIQUE ---
+/**
+ * Supprime les prévisions et la carte expirées du cache local pour éviter les données obsolètes.
+ */
 async function checkCacheValidity() {
   const storedForecast = localStorage.getItem(FORECAST_STORAGE_KEY);
   if (!storedForecast) return;
@@ -224,7 +227,9 @@ async function checkCacheValidity() {
   }
 }
 
-// Charge la carte stockée en mémoire IndexedDB s'il y en a une
+/**
+ * Charge la carte enregistrée en cache et l'affiche si elle existe encore.
+ */
 async function afficheCarte() {
   if (carteEl) {
     const cachedMapUrl = await getStoredMapUrl();
@@ -237,6 +242,9 @@ async function afficheCarte() {
 }
 
 
+/**
+ * Récupère les prévisions météo depuis le cache local ou les télécharge si nécessaire.
+ */
 async function loadForecast() {
   const storedForecast = localStorage.getItem(FORECAST_STORAGE_KEY);
   if (storedForecast) {
@@ -253,6 +261,9 @@ async function loadForecast() {
   return forecast;
 }
 
+/**
+ * Formate une date météo selon le format français pour l'affichage dans l'interface.
+ */
 function formatForecastTime(timeString, onlyHour = false) {
   if (!timeString) return 'indisponible';
   const date = new Date(timeString);
@@ -262,12 +273,18 @@ function formatForecastTime(timeString, onlyHour = false) {
     : { dateStyle: 'full', timeStyle: 'short' }).format(date);
 }
 
+/**
+ * Ajoute le signe et la précision appropriés aux valeurs de correction d'altitude.
+ */
 function formatSignedMetric(value, decimals = 0) {
   const sign = value > 0 ? '+' : value < 0 ? '-' : '';
   const magnitude = Math.abs(value);
   return `${sign}${magnitude.toFixed(decimals)} m`;
 }
 
+/**
+ * Lit la dernière localisation connue enregistrée dans le stockage local.
+ */
 function getStoredLocation() {
   try {
     const location = JSON.parse(localStorage.getItem(USER_LOCATION_STORAGE_KEY));
@@ -279,6 +296,9 @@ function getStoredLocation() {
   return null;
 }
 
+/**
+ * Ajoute un bloc de contexte géographique au-dessus des détails de prévisions.
+ */
 function prependForecastLocation(location) {
   // 1. Validation de sécurité initiale
   if (!location || !forecastCoverageTextEl) return;
@@ -330,6 +350,9 @@ function prependForecastLocation(location) {
   forecastCoverageTextEl.prepend(containerSpan);
 }
 
+/**
+ * Met à jour le résumé de couverture des prévisions et la localisation associée.
+ */
 function updateForecastCoverage(rawData) {
   const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
   const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
@@ -352,6 +375,9 @@ function updateForecastCoverage(rawData) {
   prependForecastLocation(location);
 }
 
+/**
+ * Normalise une heure saisie en chaîne ISO exploitable par les calculs de météo.
+ */
 function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(timeValue)) {
     return `${timeValue}:00`;
@@ -365,12 +391,18 @@ function buildTimeStringFromInput(timeValue, referenceDate = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hours)}:${pad(minutes)}:00`;
 }
 
+/**
+ * Génère l'horodatage courant au format compatible avec les données météo.
+ */
 function buildCurrentTimeString() {
   const now = new Date();
   const pad = (value) => String(value).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
+/**
+ * Avertit l'utilisateur si la calibration est avant, après ou hors de la plage des prévisions disponibles.
+ */
 function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   const calibrationKey = calibrationTime.slice(0, 16);
   const currentKey = currentTime.slice(0, 16);
@@ -412,6 +444,9 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   }
 }
 
+/**
+ * Restaure les valeurs précédemment enregistrées dans le formulaire de calibration.
+ */
 function loadSavedValues() {
   const savedTime = localStorage.getItem(STORAGE_KEYS.time);
   const calibrationTime = savedTime
@@ -423,6 +458,9 @@ function loadSavedValues() {
 }
 
 // Rafraîchir prévisions <-> Hors ligne
+/**
+ * Active ou désactive le bouton de mise à jour selon la disponibilité de la connexion Internet.
+ */
 function turnOnOffbtn(isOn = false) {
   if (isOn) {
     refreshBtn.disabled = false;
@@ -436,6 +474,9 @@ function turnOnOffbtn(isOn = false) {
 }
 
 
+/**
+ * Calcule la correction d'altitude en fonction des conditions météo et de l'heure de calibration.
+ */
 async function computeResult() {
   const timeValue = timeInput.value;
   const calibrationAltitude = Number(altitudeInput.value);

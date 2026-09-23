@@ -4,6 +4,9 @@ import { openDatabase, STORE_NAME } from './database.js';
 const THEME_KEY = 'theme';
 const THEMES = ['light', 'dark', 'system'];
 
+/**
+ * Lit le thème enregistré dans le stockage local du navigateur.
+ */
 async function readTheme() {
   const database = await openDatabase();
   const theme = await new Promise((resolve, reject) => {
@@ -17,6 +20,9 @@ async function readTheme() {
   return theme;
 }
 
+/**
+ * Enregistre le thème sélectionné pour le réutiliser au chargement suivant.
+ */
 async function saveTheme(theme) {
   const database = await openDatabase();
   await new Promise((resolve, reject) => {
@@ -28,6 +34,9 @@ async function saveTheme(theme) {
   database.close();
 }
 
+/**
+ * Applique immédiatement le thème sélectionné au document HTML.
+ */
 function applyTheme(theme) {
   document.documentElement.toggleAttribute('data-theme', theme !== 'system');
   if (theme !== 'system') document.documentElement.dataset.theme = theme;
@@ -35,10 +44,16 @@ function applyTheme(theme) {
   document.getElementById('theme').textContent = theme == 'system' ? '' : theme;
 }
 
+/**
+ * Initialise le bouton de thème et le synchronise avec le thème enregistré.
+ */
 export async function initializeTheme() {
   const themeToggle = document.getElementById('themeToggle');
   if (!themeToggle) return;
 
+  /**
+   * Publie un message de statut dans le journal d'événements du thème.
+   */
   const updateStatus = (message, type = 'info') => {
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: { message, type }
@@ -55,6 +70,9 @@ export async function initializeTheme() {
   }
   applyTheme(theme);
 
+  /**
+   * Bascule vers le thème suivant et le conserve dans le stockage.
+   */
   const cycleTheme = async () => {
     theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
     applyTheme(theme);

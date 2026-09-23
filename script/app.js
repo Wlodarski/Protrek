@@ -75,7 +75,7 @@ await initializeTheme();
 await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 
 loadSavedValues();
-updateForecastCoverage(await loadForecast());
+updateForecastCoverage(await loadForecast()); //FIXME: en double??
 
 // --- MÉCANISME DE NETTOYAGE AUTOMATIQUE ---
 async function checkCacheValidity() {
@@ -372,10 +372,8 @@ async function computeResult() {
     const expectedLocalPressure = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + décalage_hPa;
     //TODO: test et ~ wxSeverity
     // selon mon test : ±0.4 hPa (~3.4 m) par temps calme
-    // je suppose erreur = arrondi autrement // pas bonne logique
-    const toleranceHPa = severityValue == 1 ? 0.4 : 0.5;
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) - toleranceHPa + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + toleranceHPa + décalage_hPa);
+    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 3.4) + décalage_hPa);
+    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 3.4) + décalage_hPa);
     const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
       `de ${expectedLocalPressureMIN} hPa` :
       `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;

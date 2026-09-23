@@ -446,9 +446,9 @@ async function computeResult() {
     0: "Indicateur de sévérité météo indisponible.",
     1: "Les conditions météo sont stables et calmes.",
     2: "Une perturbation météo mineure est en cours.",
-    3: "Instabilité barométrique détectée (risque d'orage) ; les lectures peuvent fluctuer.",
-    4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d'altitude.",
-    5: "Conditions météo extrêmes ; l'altimètre barométrique est fortement perturbé."
+    3: "Instabilité barométrique détectée (risque d’orage) ; les lectures peuvent fluctuer.",
+    4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d’altitude.",
+    5: "Conditions météo extrêmes ; l’altimètre barométrique est fortement perturbé."
   };
 
 

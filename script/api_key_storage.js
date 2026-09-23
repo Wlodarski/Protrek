@@ -95,13 +95,13 @@ async function processStoredApiKey(keyName, urlParamsInstance) {
   if (keyName === CAL_ERROR_NAME) {
     const parsedCal = parseFloat(apiKey);
     if (isNaN(parsedCal)) {
-      dispatchStorageStatus(`Le paramètre CAL dans l'URL n'est pas un nombre valide.`, "error");
+      dispatchStorageStatus(`Le paramètre CAL dans l’URL n’est pas un nombre valide.`, "error");
       return getStoredApiKey(keyName, urlParameter);
     }
     apiKey = parsedCal;
   }
 
-  dispatchStorageStatus(`Nouvelle clé ${urlParameter} détectée dans l'URL.`, "info");
+  dispatchStorageStatus(`Nouvelle clé ${urlParameter} détectée dans l’URL.`, "info");
   await saveApiKey(apiKey, keyName);
   return apiKey;
 }

@@ -66,7 +66,7 @@ async function altitudeGLO(lat, lon) {
     // Sécurité : On vérifie que le serveur renvoie bien du JSON et non de l'HTML (ex: <!doctype ...)
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
-      throw new TypeError("Le serveur n'a pas renvoyé un format JSON valide.");
+      throw new TypeError("Le serveur n’a pas renvoyé un format JSON valide.");
     }
 
     const data = await response.json();
@@ -165,14 +165,14 @@ function getUserGeocode() {
     const finalizeLocation = async (location) => {
       if (location) {
 
-        dispatchGpsStatus("Récupération de l'élévation GLO-90...", 'info');
+        dispatchGpsStatus("Récupération de l’élévation GLO-90...", 'info');
         const estimatedAltitude = await altitudeGLO(location.latitude, location.longitude);
         if (estimatedAltitude !== null) {
           location.altitude = estimatedAltitude;
           location.altitudeAccuracy = 4;  // Absolute Vertical Accuracy : < 4m (90% linear error)
           dispatchGpsStatus(`[GLO-90] Élévation obtenue : ${estimatedAltitude} m`, 'info');
         } else {
-          dispatchGpsStatus("[GLO-90] Échec de l'obtention de l'élévation", 'error');
+          dispatchGpsStatus("[GLO-90] Échec de l’obtention de l’élévation", 'error');
         }
 
 
@@ -281,7 +281,7 @@ export async function fetchMap(location = null) {
     location ??= await getUserGeocode();
 
     if (!location) {
-      throw new Error("Impossible d'obtenir une position géographique valide.");
+      throw new Error("Impossible d’obtenir une position géographique valide.");
     }
 
     const url = await buildMapURL();

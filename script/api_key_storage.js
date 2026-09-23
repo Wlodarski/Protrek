@@ -53,7 +53,7 @@ export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
     } else if (keyName === MAP_KEY_NAME) {
       dispatchStorageStatus("Clé API Map sauvegardée avec succès.", "success");
     } else if (keyName === CAL_ERROR_NAME) {
-      dispatchStorageStatus("Erreur de calibration sauvegardée avec succès.", "success");
+      dispatchStorageStatus("Calibration sauvegardée avec succès.", "success");
     }
   } catch (error) {
     dispatchStorageStatus(`Échec de sauvegarde du paramètre : ${error.message}`, "error");

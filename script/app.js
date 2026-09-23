@@ -74,7 +74,7 @@ window.addEventListener('gps-status', (event) => {
 await initializeTheme();
 await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 
-// loadSavedValues();
+loadSavedValues();
 //updateForecastCoverage(await loadForecast()); //FIXME: en double??
 
 // --- MÉCANISME DE NETTOYAGE AUTOMATIQUE ---

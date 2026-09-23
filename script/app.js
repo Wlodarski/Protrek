@@ -40,8 +40,8 @@ await checkCacheValidity(); // Exécution immédiate du nettoyage avant d'affich
 await initializeTheme(); // light, dark, ou system
 await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 loadSavedValues(); // les input
+updateForecastCoverage(await loadForecast()); // détails des prévisions
 afficheCarte(); // la carte
-updateForecastCoverage(await loadForecast()); // détails sous la carte
 turnOnOffbtn(navigator.onLine); // Vérification internet
 
 /* 

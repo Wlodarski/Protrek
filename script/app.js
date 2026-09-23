@@ -32,6 +32,47 @@ const refreshBtn = document.getElementById('refreshBtn');
 const forecastCoverageTextEl = document.getElementById('forecastCoverageText');
 const carteEl = document.getElementById("carte");
 
+// STATUT en journal de bord défillant
+// DOIT PRÉCÉDER L'INITIALISATION SINON RIEN VISIBLE
+window.addEventListener('gps-status', (event) => {
+  if (!statusEl) return;
+  const { message, type } = event.detail;
+
+  // 1. Alignement du conteneur sur vos variables de surface et d'ombrage
+  statusEl.style.maxHeight = '10rem';
+  statusEl.style.overflowY = 'auto';
+  statusEl.style.display = 'flex';
+  statusEl.style.flexDirection = 'column';
+  statusEl.style.gap = '4px';
+  statusEl.style.padding = '10px';
+  statusEl.style.fontSize = '0.85rem';
+  statusEl.style.textAlign = 'left';
+
+  // 2. Création de la ligne textuelle
+  const logLine = document.createElement('div');
+  logLine.textContent = message;
+  logLine.style.lineHeight = '1.4';
+  logLine.style.marginBottom = '0.5rem';
+
+  // 3. Attribution dynamique des couleurs de texte selon vos jetons de statut :root
+  if (type === 'error') {
+    logLine.style.color = 'var(--status-error)';
+  } else if (type === 'warn') {
+    logLine.style.color = 'var(--status-warning, #f39c12)'; // Fallback si non déclarée
+  } else if (type === 'success') {
+    // Équilibre entre --status-success (light) et --success (dark)
+    logLine.style.color = 'var(--status-success, var(--success))';
+    logLine.style.fontWeight = '600';
+  } else {
+    // Couleur d'information ou textuelle par défaut
+    logLine.style.color = 'var(--status-info, var(--text))';
+  }
+
+  // 4. Injection et défilement
+  statusEl.appendChild(logLine);
+  statusEl.scrollTop = statusEl.scrollHeight;
+});
+
 /* 
 *   
 *   INITIALISATION DE L'INTERFACE -----------------------------------------------------
@@ -111,45 +152,6 @@ refreshBtn.addEventListener('click', async () => {
   }
 });
 
-// STATUT en journal de bord défillant
-window.addEventListener('gps-status', (event) => {
-  if (!statusEl) return;
-  const { message, type } = event.detail;
-
-  // 1. Alignement du conteneur sur vos variables de surface et d'ombrage
-  statusEl.style.maxHeight = '10rem';
-  statusEl.style.overflowY = 'auto';
-  statusEl.style.display = 'flex';
-  statusEl.style.flexDirection = 'column';
-  statusEl.style.gap = '4px';
-  statusEl.style.padding = '10px';
-  statusEl.style.fontSize = '0.85rem';
-  statusEl.style.textAlign = 'left';
-
-  // 2. Création de la ligne textuelle
-  const logLine = document.createElement('div');
-  logLine.textContent = message;
-  logLine.style.lineHeight = '1.4';
-  logLine.style.marginBottom = '0.5rem';
-
-  // 3. Attribution dynamique des couleurs de texte selon vos jetons de statut :root
-  if (type === 'error') {
-    logLine.style.color = 'var(--status-error)';
-  } else if (type === 'warn') {
-    logLine.style.color = 'var(--status-warning, #f39c12)'; // Fallback si non déclarée
-  } else if (type === 'success') {
-    // Équilibre entre --status-success (light) et --success (dark)
-    logLine.style.color = 'var(--status-success, var(--success))';
-    logLine.style.fontWeight = '600';
-  } else {
-    // Couleur d'information ou textuelle par défaut
-    logLine.style.color = 'var(--status-info, var(--text))';
-  }
-
-  // 4. Injection et défilement
-  statusEl.appendChild(logLine);
-  statusEl.scrollTop = statusEl.scrollHeight;
-});
 
 // INTERNET ON
 window.addEventListener('online', async () => {
@@ -186,8 +188,6 @@ window.addEventListener('offline', () => {
   turnOnOffbtn(false);
 });
 
-
-//FIXME: pourquoi double téléchargement ??
 
 
 // ------------------------------------------------------------------------------------------

@@ -87,7 +87,7 @@ refreshBtn.addEventListener('click', async () => {
     timeInput.value = buildCurrentTimeString().slice(0, 16);
 
     // Met à jour la carte
-    const nouvelleCarteURL = await fetchMap();
+    const nouvelleCarteURL = await fetchMap(forecast.location);
 
     // CORRIGÉ : Utilisation de carteEl déjà déclaré ou récupération sécurisée
     if (nouvelleCarteURL && carteEl) {

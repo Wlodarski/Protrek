@@ -276,10 +276,10 @@ async function buildMapURL() {
   return mapURL;
 }
 
-export async function fetchMap() {
+export async function fetchMap(location = null) {
   try {
-    // 1. Récupère la position (depuis le cache ou le GPS si nécessaire)
-    const location = await getUserGeocode();
+    location ??= await getUserGeocode();
+
     if (!location) {
       throw new Error("Impossible d'obtenir une position géographique valide.");
     }

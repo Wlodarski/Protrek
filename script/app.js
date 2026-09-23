@@ -30,6 +30,7 @@ const thermalMetricEl = document.getElementById('thermalMetric');
 const humidityMetricEl = document.getElementById('humidityMetric');
 const refreshBtn = document.getElementById('refreshBtn');
 const forecastCoverageTextEl = document.getElementById('forecastCoverageText');
+const carteEl = document.getElementById("carte");
 
 /* 
 *   
@@ -88,14 +89,14 @@ refreshBtn.addEventListener('click', async () => {
     // Met à jour la carte
     const nouvelleCarteURL = await fetchMap();
 
-    // CORRIGÉ : Utilisation de carteElement déjà déclaré ou récupération sécurisée
-    if (nouvelleCarteURL && carteElement) {
-      if (carteElement.src.startsWith('blob:')) {
-        URL.revokeObjectURL(carteElement.src);
+    // CORRIGÉ : Utilisation de carteEl déjà déclaré ou récupération sécurisée
+    if (nouvelleCarteURL && carteEl) {
+      if (carteEl.src.startsWith('blob:')) {
+        URL.revokeObjectURL(carteEl.src);
       }
-      carteElement.src = nouvelleCarteURL;
-    } else if (carteElement && !carteElement.src) {
-      carteElement.src = "img\\cartevide.webp";
+      carteEl.src = nouvelleCarteURL;
+    } else if (carteEl && !carteEl.src) {
+      carteEl.src = "img\\cartevide.webp";
     }
 
 
@@ -225,13 +226,12 @@ async function checkCacheValidity() {
 
 // Charge la carte stockée en mémoire IndexedDB s'il y en a une
 async function afficheCarte() {
-  const carteElement = document.getElementById("carte");
-  if (carteElement) {
+  if (carteEl) {
     const cachedMapUrl = await getStoredMapUrl();
     if (cachedMapUrl) {
-      carteElement.src = cachedMapUrl;
+      carteEl.src = cachedMapUrl;
     } else {
-      carteElement.src = "img\\cartevide.webp";
+      carteEl.src = "img\\cartevide.webp";
     }
   }
 }

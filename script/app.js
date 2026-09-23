@@ -31,7 +31,86 @@ const humidityMetricEl = document.getElementById('humidityMetric');
 const refreshBtn = document.getElementById('refreshBtn');
 const forecastCoverageTextEl = document.getElementById('forecastCoverageText');
 
-// Écouteur d'événements pour transformer le statut en journal de bord défilant thémé
+/* 
+*   
+*   INITIALISATION DE L'INTERFACE -----------------------------------------------------
+*
+*/
+await checkCacheValidity(); // Exécution immédiate du nettoyage avant d'afficher les éléments
+await initializeTheme(); // light, dark, ou system
+await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
+loadSavedValues(); // les input
+afficheCarte(); // la carte
+updateForecastCoverage(await loadForecast()); // détails sous la carte
+turnOnOffbtn(navigator.onLine); // Vérification internet
+
+/* 
+* ÉCOUTEURS DES ÉVENEMENTS -------------------------------------------------------------
+* 
+*/
+
+// BOUTON CALCULER
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!timeInput.value || !altitudeInput.value || !currentAltitudeInput.value) {
+    statusEl.textContent = 'Veuillez remplir tous les champs.';
+    statusEl.style.color = 'var(--status-error)';
+    return;
+  }
+  localStorage.setItem(STORAGE_KEYS.time, timeInput.value);
+  localStorage.setItem(STORAGE_KEYS.altitude, altitudeInput.value);
+  localStorage.setItem(STORAGE_KEYS.currentAltitude, currentAltitudeInput.value);
+  await computeResult();
+});
+
+// BOUTON RAFRAICHÎR PRÉVISIONS
+refreshBtn.addEventListener('click', async () => {
+  // On vide les anciens logs avant de lancer le nouveau cycle
+  if (statusEl) statusEl.replaceChildren();
+
+  try {
+    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js');
+    const forecast = await fetchCombinedForecast();
+    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
+    updateForecastCoverage(forecast);
+
+    // Valeurs par défaut pour la calibration
+    const location = getStoredLocation();
+    if (location && Number.isFinite(location.altitude)) {
+      // CORRIGÉ : Utilisation du bon pointeur d'élément de formulaire (altitudeInput)
+      altitudeInput.value = location.altitude;
+      window.dispatchEvent(new CustomEvent('gps-status', {
+        detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
+      }));
+    }
+    timeInput.value = buildCurrentTimeString().slice(0, 16);
+
+    // Met à jour la carte
+    const nouvelleCarteURL = await fetchMap();
+
+    // CORRIGÉ : Utilisation de carteElement déjà déclaré ou récupération sécurisée
+    if (nouvelleCarteURL && carteElement) {
+      if (carteElement.src.startsWith('blob:')) {
+        URL.revokeObjectURL(carteElement.src);
+      }
+      carteElement.src = nouvelleCarteURL;
+    } else if (carteElement && !carteElement.src) {
+      carteElement.src = "img\\cartevide.webp";
+    }
+
+
+    // Message final de validation
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' }
+    }));
+  } catch (error) {
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' }
+    }));
+  }
+});
+
+// STATUT en journal de bord défillant
 window.addEventListener('gps-status', (event) => {
   if (!statusEl) return;
   const { message, type } = event.detail;
@@ -71,11 +150,47 @@ window.addEventListener('gps-status', (event) => {
   statusEl.scrollTop = statusEl.scrollHeight;
 });
 
-await initializeTheme();
-await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
+// INTERNET ON
+window.addEventListener('online', async () => {
+  console.log('On a une connexion réseau...');
 
-loadSavedValues();
-//updateForecastCoverage(await loadForecast()); //FIXME: en double??
+  try {
+    // Utilisation de await pour attendre la vraie réponse du réseau
+    // icanhazip.com accepte le CORS et répond ultra-rapidement
+    const response = await fetch("https://icanhazip.com", {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store"
+    });
+
+    if (response.ok) {
+      console.log('🟢 On a Internet !');
+      turnOnOffbtn(true);
+    } else {
+      // Cas où le serveur répond mais avec une erreur (ex: portail captif)
+      console.log('🔴 Réseau connecté mais pas de réponse Internet...');
+      turnOnOffbtn(false);
+    }
+
+  } catch (error) {
+    // Tombe ici si la requête échoue complètement (pas d'Internet, DNS en panne...)
+    console.log('🔴 Pas d\'Internet...');
+    turnOnOffbtn(false);
+  }
+});
+
+// INTERNET OFF
+window.addEventListener('offline', () => {
+  console.log('🔴 Pas d\'Internet...');
+  turnOnOffbtn(false);
+});
+
+
+//FIXME: pourquoi double téléchargement ??
+
+
+// ------------------------------------------------------------------------------------------
+
 
 // --- MÉCANISME DE NETTOYAGE AUTOMATIQUE ---
 async function checkCacheValidity() {
@@ -108,18 +223,16 @@ async function checkCacheValidity() {
   }
 }
 
-// Exécution immédiate du nettoyage avant d'afficher les éléments
-await checkCacheValidity();
-// ------------------------------------------
-
 // Charge la carte stockée en mémoire IndexedDB s'il y en a une
-const carteElement = document.getElementById("carte");
-if (carteElement) {
-  const cachedMapUrl = await getStoredMapUrl();
-  if (cachedMapUrl) {
-    carteElement.src = cachedMapUrl;
-  } else {
-    carteElement.src = "img\\cartevide.webp";
+async function afficheCarte() {
+  const carteElement = document.getElementById("carte");
+  if (carteElement) {
+    const cachedMapUrl = await getStoredMapUrl();
+    if (cachedMapUrl) {
+      carteElement.src = cachedMapUrl;
+    } else {
+      carteElement.src = "img\\cartevide.webp";
+    }
   }
 }
 
@@ -299,6 +412,28 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   }
 }
 
+function loadSavedValues() {
+  const savedTime = localStorage.getItem(STORAGE_KEYS.time);
+  const calibrationTime = savedTime
+    ? buildTimeStringFromInput(savedTime).slice(0, 16)
+    : null; // Rien pour refléter la situation réelle
+  timeInput.value = calibrationTime;
+  altitudeInput.value = localStorage.getItem(STORAGE_KEYS.altitude) || null; // Rien pour refléter la situation réelle
+  currentAltitudeInput.value = localStorage.getItem(STORAGE_KEYS.currentAltitude) || null; // Rien pour refléter la situation réelle
+}
+
+// Rafraîchir prévisions <-> Hors ligne
+function turnOnOffbtn(isOn = false) {
+  if (isOn) {
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('nowifi');
+    refreshBtn.textContent = 'Rafraîchir prévisions';
+  } else {
+    refreshBtn.disabled = true;
+    refreshBtn.classList.add('nowifi');
+    refreshBtn.textContent = 'Hors ligne';
+  }
+}
 
 
 async function computeResult() {
@@ -475,127 +610,3 @@ async function computeResult() {
     resultDetailsEl.textContent = 'Le calcul n’a pas pu être effectué en raison d’une erreur technique.';
   }
 }
-
-
-
-function loadSavedValues() {
-  const savedTime = localStorage.getItem(STORAGE_KEYS.time);
-  const calibrationTime = savedTime
-    ? buildTimeStringFromInput(savedTime).slice(0, 16)
-    : null; // FIXME: je penses que je préfère rien pour refléter la situation réelle
-  timeInput.value = calibrationTime;
-  altitudeInput.value = localStorage.getItem(STORAGE_KEYS.altitude) || null; // FIXME: ??????
-  currentAltitudeInput.value = localStorage.getItem(STORAGE_KEYS.currentAltitude) || null; // FIXME: ??????
-}
-
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  if (!timeInput.value || !altitudeInput.value || !currentAltitudeInput.value) {
-    statusEl.textContent = 'Veuillez remplir tous les champs.';
-    statusEl.style.color = 'var(--status-error)';
-    return;
-  }
-  localStorage.setItem(STORAGE_KEYS.time, timeInput.value);
-  localStorage.setItem(STORAGE_KEYS.altitude, altitudeInput.value);
-  localStorage.setItem(STORAGE_KEYS.currentAltitude, currentAltitudeInput.value);
-  await computeResult();
-});
-
-refreshBtn.addEventListener('click', async () => {
-  // On vide les anciens logs avant de lancer le nouveau cycle
-  if (statusEl) statusEl.replaceChildren();
-
-  try {
-    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js');
-    const forecast = await fetchCombinedForecast();
-    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
-    updateForecastCoverage(forecast);
-
-    // Valeurs par défaut pour la calibration
-    const location = getStoredLocation();
-    if (location && Number.isFinite(location.altitude)) {
-      // CORRIGÉ : Utilisation du bon pointeur d'élément de formulaire (altitudeInput)
-      altitudeInput.value = location.altitude;
-      window.dispatchEvent(new CustomEvent('gps-status', {
-        detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
-      }));
-    }
-    timeInput.value = buildCurrentTimeString().slice(0, 16);
-
-    // Met à jour la carte
-    const nouvelleCarteURL = await fetchMap();
-
-    // CORRIGÉ : Utilisation de carteElement déjà déclaré ou récupération sécurisée
-    if (nouvelleCarteURL && carteElement) {
-      if (carteElement.src.startsWith('blob:')) {
-        URL.revokeObjectURL(carteElement.src);
-      }
-      carteElement.src = nouvelleCarteURL;
-    } else if (carteElement && !carteElement.src) {
-      carteElement.src = "img\\cartevide.webp";
-    }
-
-
-    // Message final de validation
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' }
-    }));
-  } catch (error) {
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' }
-    }));
-  }
-});
-
-
-// Vérifie si on a Internet
-
-function turnOnOffbtn(isOn = false) {
-  if (isOn) {
-    refreshBtn.disabled = false;
-    refreshBtn.classList.remove('nowifi');
-    refreshBtn.textContent = 'Rafraîchir prévisions';
-  } else {
-    refreshBtn.disabled = true;
-    refreshBtn.classList.add('nowifi');
-    refreshBtn.textContent = 'Hors ligne';
-  }
-}
-
-// Vérification initiale au chargement de la page
-turnOnOffbtn(navigator.onLine);
-
-// Écouteur d'événement asynchrone pour le retour du réseau
-window.addEventListener('online', async () => {
-  console.log('On a une connexion réseau...');
-
-  try {
-    // Utilisation de await pour attendre la vraie réponse du réseau
-    // icanhazip.com accepte le CORS et répond ultra-rapidement
-    const response = await fetch("https://icanhazip.com", {
-      method: "GET",
-      mode: "cors",
-      cache: "no-store"
-    });
-
-    if (response.ok) {
-      console.log('🟢 On a Internet !');
-      turnOnOffbtn(true);
-    } else {
-      // Cas où le serveur répond mais avec une erreur (ex: portail captif)
-      console.log('🔴 Réseau connecté mais pas de réponse Internet...');
-      turnOnOffbtn(false);
-    }
-
-  } catch (error) {
-    // Tombe ici si la requête échoue complètement (pas d'Internet, DNS en panne...)
-    console.log('🔴 Pas d\'Internet...');
-    turnOnOffbtn(false);
-  }
-});
-
-window.addEventListener('offline', () => {
-  console.log('🔴 Pas d\'Internet...');
-  turnOnOffbtn(false);
-});
-

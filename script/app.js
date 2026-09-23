@@ -75,7 +75,7 @@ await initializeTheme();
 await initializeAllSettings();      // ?API=xxxxx ?MAP=yyyyy ?CAL=123.45
 
 loadSavedValues();
-updateForecastCoverage(await loadForecast()); //FIXME: en double??
+//updateForecastCoverage(await loadForecast()); //FIXME: en double??
 
 // --- MÉCANISME DE NETTOYAGE AUTOMATIQUE ---
 async function checkCacheValidity() {

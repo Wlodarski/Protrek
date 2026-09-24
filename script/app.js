@@ -560,8 +560,6 @@ async function computeResult() {
     const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
     const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
 
-    console.log(calculatePressureAltitude, décalage_hPa, expectedLocalPressure);
-
     /* REQM (Root Mean Squared Error)
     -----------------------------
     Pour fournir une marge d'erreur réaliste sous la forme P(t) ± erreur(t), 
@@ -577,11 +575,22 @@ async function computeResult() {
     = ± SQRT(0,49 + 0.0025* h^2)
     
     */
-    const erreur_hPa = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2)); // hPa
-    const erreur_m = calculatePressureAtAltitude(pWeatherCurrent + erreur_hPa, currentAltitude) - calculatePressureAtAltitude(pWeatherCurrent - erreur_hPa, currentAltitude); // m
+    // Calcul de la marge d'erreur barométrique quadratique à 95% (en hPa)
+    const erreur_hPa = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2));
+
+    // Conversion rigoureuse en mètres ISA
+    // Plus la pression augmente (+ erreur), plus l'altitude théorique diminue
+    const altPressionBasse = calculateAltitudeFromPressure(pWeatherCurrent - erreur_hPa);
+    const altPressionHaute = calculateAltitudeFromPressure(pWeatherCurrent + erreur_hPa);
+
+    // L'écart géométrique total divisé par 2 donne le ± autour de la valeur centrale
+    const erreur_m = Math.abs(altPressionBasse - altPressionHaute) / 2;
+
+    // Calcul des bornes de pression locale affichées par la montre (avec décalage et troncation)
     const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent - erreur_hPa, currentAltitude) + décalage_hPa);
     const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent + erreur_hPa, currentAltitude) + décalage_hPa);
-    const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
+
+    const messageExpectedLocalPressure = expectedLocalPressureMIN === expectedLocalPressureMAX ?
       `de ${expectedLocalPressureMIN} hPa` :
       `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
 

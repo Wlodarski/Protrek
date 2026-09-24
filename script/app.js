@@ -482,7 +482,8 @@ async function computeResult() {
   const calibrationAltitude = Number(altitudeInput.value);
   const currentAltitude = Number(currentAltitudeInput.value);
 
-
+  // Ces libellés rendent le niveau de perturbation météo compréhensible
+  // même lorsque la source ne fournit pas de texte explicatif.
   const SEVERITY_QUALIFIERS = {
     0: "Indicateur de sévérité météo indisponible.",
     1: "Les conditions météo sont stables et calmes.",
@@ -507,6 +508,8 @@ async function computeResult() {
     const rawData = await loadForecast();
     updateForecastCoverage(rawData);
 
+    // Le calcul compare les conditions au moment de la calibration avec
+    // celles observées maintenant, après interpolation dans les prévisions.
     const targetTimeStr = buildCurrentTimeString();
     const calTimeStr = buildTimeStringFromInput(timeValue);
 
@@ -524,6 +527,7 @@ async function computeResult() {
     const severityText = SEVERITY_QUALIFIERS[severityCurrent] || SEVERITY_QUALIFIERS;
 
 
+    // Sans ces six valeurs, une correction serait numériquement trompeuse.
     if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent]
       .some((value) => value === null || value === undefined)) {
       throw new Error('Données météo manquantes ou indisponibles pour les heures demandées.');
@@ -546,6 +550,7 @@ async function computeResult() {
     const deltaAlt = trueAltitude - calibrationAltitude;
     const décalage_hPa = await getCalError();
 
+    // La marge d'incertitude augmente avec le temps écoulé depuis la calibration.
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
     const nowTimeMs = Date.now();
@@ -569,14 +574,16 @@ async function computeResult() {
       exemple, après 10 heures et demi, 0,35 + 0,024*10,5 = ± 0,602 hPa
 
     */
-    const sigma = 0.35 + 0.025 * totalMinutes / 60;
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) - sigma + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + sigma + décalage_hPa);
+    const sigma_hPa = 0.35 + 0.025 * totalMinutes / 60; // hPa
+    const sigmaAlt = calculatePressureAtAltitude(pWeatherCurrent + 2 * sigma_hPa, currentAltitude) - calculatePressureAtAltitude(pWeatherCurrent - 2 * sigma_hPa, currentAltitude); // m
+    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent - 2 * sigma_hPa, currentAltitude) + décalage_hPa);
+    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent + 2 * sigma_hPa, currentAltitude) + décalage_hPa);
     const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
       `de ${expectedLocalPressureMIN} hPa` :
       `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
 
 
+    // Prépare les unités séparément afin d'obtenir une phrase naturelle en français.
     // 5. Initialisation des API internationales de formatage
     const rtf = new Intl.RelativeTimeFormat('fr-CA', { numeric: 'always' });
     const listFormatter = new Intl.ListFormat('fr-CA', { style: 'long', type: 'conjunction' });
@@ -603,6 +610,7 @@ async function computeResult() {
     // 5. Union des segments avec l'API internationale
     const timeText = listFormatter.format(timeSegments);
 
+    // Les métriques détaillent la correction totale par phénomène météo.
     // 5. Mise à jour de l'affichage des résultats graphiques principaux
     resultValueEl.innerHTML = `${Math.round(trueAltitude)} m`;
     pressureMetricEl.textContent = formatSignedMetric(pressureContribution, 1);
@@ -612,34 +620,41 @@ async function computeResult() {
     // 6. Construction et injection du paragraphe de détails qualifié
     const detailsText = document.createElement('small');
     detailsText.append(
+
+      /* La correction totale estimée est de -45.9 m par rapport à l’affichage actuel.
+       L’élévation a changé de -44.9 m en 1 jour, 1 heure et 35 minutes.
+       La pression atmosphérique estimée au niveau de la mer est de 1032.2 hPa. */
+
       'La correction totale estimée est de ',
       Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
       ' par rapport à l’affichage actuel. ',
-
-      // Object.assign(document.createElement('br')),
-      // Object.assign(document.createElement('br')),
-
       'L’élévation a changé de ',
       Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
       '. ',
-      // Object.assign(document.createElement('br')),
-      // Object.assign(document.createElement('br')),
-
       'La pression atmosphérique estimée au niveau de la mer est de ',
       Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
       '. ',
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),
 
-      'Votre montre devrait indiquer une pression locale ',
+      /* Votre montre devrait afficher entre 1029 hPa et 1033 hPa. 
+      Ce calcul intègre le décalage systématique du capteur (+2,953 hPa) 
+      et la marge d'erreur météo à 95 % (±2,0 hPa, équivalant à ±3,9 m). */
+
+      'Votre montre devrait afficher ',
       messageExpectedLocalPressure,
       `, idéalement `,
       Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
-      (décalage_hPa !== 0) ? ` (${calculatePressureAltitude.toFixed(1)} hPa, décalé de ${décalage_hPa} hPa).` : '.',
+      '. Ce calcul intègre ',
+      (décalage_hPa !== 0) ? `le décalage systématique du capteur (${décalage_hPa} hPa) et ` : ' ',
+      `la marge d’erreur météo à 95 % (±${(2 * sigma_hPa).toFixed(1)} hPa, équivalant à ±${sigmaAlt.toFixed(1)} m).`,
 
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),
-
+      
+      /* 
+      Les conditions météo sont stables et calmes. */
+      
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
       Object.assign(document.createElement('span'), {
         textContent: severityText,

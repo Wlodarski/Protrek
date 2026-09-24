@@ -473,6 +473,98 @@ function turnOnOffbtn(isOn = false) {
   }
 }
 
+// Ces libellés rendent le niveau de perturbation météo compréhensible
+// même lorsque la source ne fournit pas de texte explicatif.
+const SEVERITY_QUALIFIERS = {
+  0: "Indicateur de sévérité météo indisponible.",
+  1: "Les conditions météo sont stables et calmes.",
+  2: "Une perturbation météo mineure est en cours.",
+  3: "Instabilité barométrique détectée (risque d’orage) ; les lectures peuvent fluctuer.",
+  4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d’altitude.",
+  5: "Conditions météo extrêmes ; l’altimètre barométrique est fortement perturbé."
+};
+
+/**
+ * Récupère les valeurs météo nécessaires au calcul pour les deux heures ciblées.
+ */
+function getWeatherValues(rawData, calibrationTime, currentTime) {
+  const fields = [
+    'pressureMeanSeaLevel',
+    'temperature',
+    'relativeHumidity'
+  ];
+  const values = {};
+
+  for (const field of fields) {
+    values[`${field}Cal`] = getValueAtTime(rawData, calibrationTime, field);
+    values[`${field}Current`] = getValueAtTime(rawData, currentTime, field);
+  }
+
+  values.severityCurrent = getValueAtTime(rawData, currentTime, 'wxSeverity') ?? 0;
+  return values;
+}
+
+/**
+ * Formate le temps écoulé en une phrase française naturelle.
+ */
+function formatElapsedTime(totalMinutes) {
+  const rtf = new Intl.RelativeTimeFormat('fr-CA', { numeric: 'always' });
+  const listFormatter = new Intl.ListFormat('fr-CA', { style: 'long', type: 'conjunction' });
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const timeSegments = [];
+  const formatUnit = (value, unit) => rtf.format(value, unit).replace(/^dans\s+/, '');
+
+  // Formatage de chaque unité via l'API (en retirant le préfixe "dans ")
+  if (days > 0) timeSegments.push(formatUnit(days, 'day'));
+  if (hours > 0) timeSegments.push(formatUnit(hours, 'hour'));
+  // On affiche les minutes si elles sont présentes, ou si le delta total est de 0
+  if (minutes > 0 || timeSegments.length === 0) timeSegments.push(formatUnit(minutes, 'minute'));
+
+  // Union des segments avec l'API internationale
+  return listFormatter.format(timeSegments);
+}
+
+/**
+ * Calcule la marge d'erreur météo et les bornes de pression affichées par la montre.
+ */
+function calculatePressureUncertainty(pressure, altitude, totalMinutes, calibrationError) {
+  /* REQM (Root Mean Squared Error)
+  -----------------------------
+  Pour fournir une marge d'erreur réaliste sous la forme P(t) ± erreur(t),
+  il est préférable d'utiliser la REQM (Racine de l'Erreur Quadratique Moyenne)
+  ou l'Écart-Type de l'erreur.
+
+  En statistique, si l'erreur suit une loi normale,
+  une marge de 1 x REQM couvre environ 68 % des situations réelles,
+  et 2 x REQM en couvre environ 95 %.
+
+  sigma(heures) = (0,35 + 0,025 * heures)
+  erreur_95%(h) = ± 2 * SQRT(0,35^2 +(0.025*h)^2)
+  = ± SQRT(0,49 + 0.0025* h^2)
+  */
+  // Calcul de la marge d'erreur barométrique quadratique à 95% (en hPa)
+  const erreur_hPa = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2));
+
+  // Conversion rigoureuse en mètres ISA
+  // Plus la pression augmente (+ erreur), plus l'altitude théorique diminue
+  const altPressionBasse = calculateAltitudeFromPressure(pressure - erreur_hPa);
+  const altPressionHaute = calculateAltitudeFromPressure(pressure + erreur_hPa);
+
+  // L'écart géométrique total divisé par 2 donne le ± autour de la valeur centrale
+  const erreur_m = Math.abs(altPressionBasse - altPressionHaute) / 2;
+
+  // Calcul des bornes de pression locale affichées par la montre (avec décalage et troncation)
+  const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pressure - erreur_hPa, altitude) + calibrationError);
+  const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pressure + erreur_hPa, altitude) + calibrationError);
+  const messageExpectedLocalPressure = expectedLocalPressureMIN === expectedLocalPressureMAX
+    ? `de ${expectedLocalPressureMIN} hPa`
+    : `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
+
+  return { erreur_hPa, erreur_m, messageExpectedLocalPressure };
+}
+
 
 /**
  * Calcule la correction d'altitude en fonction des conditions météo et de l'heure de calibration.
@@ -481,18 +573,6 @@ async function computeResult() {
   const timeValue = timeInput.value;
   const calibrationAltitude = Number(altitudeInput.value);
   const currentAltitude = Number(currentAltitudeInput.value);
-
-  // Ces libellés rendent le niveau de perturbation météo compréhensible
-  // même lorsque la source ne fournit pas de texte explicatif.
-  const SEVERITY_QUALIFIERS = {
-    0: "Indicateur de sévérité météo indisponible.",
-    1: "Les conditions météo sont stables et calmes.",
-    2: "Une perturbation météo mineure est en cours.",
-    3: "Instabilité barométrique détectée (risque d’orage) ; les lectures peuvent fluctuer.",
-    4: "Dépression sévère ou tempête en cours ; attention aux fausses variations d’altitude.",
-    5: "Conditions météo extrêmes ; l’altimètre barométrique est fortement perturbé."
-  };
-
 
   // 1. Validation initiale des champs via le journal de bord
   if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
@@ -514,16 +594,15 @@ async function computeResult() {
     const calTimeStr = buildTimeStringFromInput(timeValue);
 
     // Récupération des données interpolées (Logarithmique pour MSL, Hermite pour le reste)
-    const pWeatherCal = getValueAtTime(rawData, calTimeStr, 'pressureMeanSeaLevel');
-    const pWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'pressureMeanSeaLevel');
-    const tempWeatherCal = getValueAtTime(rawData, calTimeStr, 'temperature');
-    const tempWeatherCurrent = getValueAtTime(rawData, targetTimeStr, 'temperature');
-    const humidityCal = getValueAtTime(rawData, calTimeStr, 'relativeHumidity');
-    const humidityCurrent = getValueAtTime(rawData, targetTimeStr, 'relativeHumidity');
-
-    // Récupération du niveau de sévérité météo (0 par défaut si absent ou indisponible)
-    const severityValue = getValueAtTime(rawData, targetTimeStr, 'wxSeverity');
-    const severityCurrent = severityValue ?? 0;
+    const {
+      pressureMeanSeaLevelCal: pWeatherCal,
+      pressureMeanSeaLevelCurrent: pWeatherCurrent,
+      temperatureCal: tempWeatherCal,
+      temperatureCurrent: tempWeatherCurrent,
+      relativeHumidityCal: humidityCal,
+      relativeHumidityCurrent: humidityCurrent,
+      severityCurrent
+    } = getWeatherValues(rawData, calTimeStr, targetTimeStr);
     const severityText = SEVERITY_QUALIFIERS[severityCurrent] || SEVERITY_QUALIFIERS;
 
 
@@ -560,67 +639,13 @@ async function computeResult() {
     const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
     const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
 
-    /* REQM (Root Mean Squared Error)
-    -----------------------------
-    Pour fournir une marge d'erreur réaliste sous la forme P(t) ± erreur(t), 
-    il est préférable d'utiliser la REQM (Racine de l'Erreur Quadratique Moyenne) 
-    ou l'Écart-Type de l'erreur. 
-    
-    En statistique, si l'erreur suit une loi normale, 
-    une marge de 1 x REQM couvre environ 68 % des situations réelles, 
-    et 2 x REQM en couvre environ 95 %. 
-
-    sigma(heures) = (0,35 + 0,025 * heures) 
-    erreur_95%(h) = ± 2 * SQRT(0,35^2 +(0.025*h)^2)
-    = ± SQRT(0,49 + 0.0025* h^2)
-    
-    */
-    // Calcul de la marge d'erreur barométrique quadratique à 95% (en hPa)
-    const erreur_hPa = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2));
-
-    // Conversion rigoureuse en mètres ISA
-    // Plus la pression augmente (+ erreur), plus l'altitude théorique diminue
-    const altPressionBasse = calculateAltitudeFromPressure(pWeatherCurrent - erreur_hPa);
-    const altPressionHaute = calculateAltitudeFromPressure(pWeatherCurrent + erreur_hPa);
-
-    // L'écart géométrique total divisé par 2 donne le ± autour de la valeur centrale
-    const erreur_m = Math.abs(altPressionBasse - altPressionHaute) / 2;
-
-    // Calcul des bornes de pression locale affichées par la montre (avec décalage et troncation)
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent - erreur_hPa, currentAltitude) + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent + erreur_hPa, currentAltitude) + décalage_hPa);
-
-    const messageExpectedLocalPressure = expectedLocalPressureMIN === expectedLocalPressureMAX ?
-      `de ${expectedLocalPressureMIN} hPa` :
-      `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
-
-
-    // Prépare les unités séparément afin d'obtenir une phrase naturelle en français.
-    // 5. Initialisation des API internationales de formatage
-    const rtf = new Intl.RelativeTimeFormat('fr-CA', { numeric: 'always' });
-    const listFormatter = new Intl.ListFormat('fr-CA', { style: 'long', type: 'conjunction' });
-
-    // 6. Extraction des composants (Jours, Heures, Minutes)
-    const days = Math.floor(totalMinutes / 1440);
-    const hours = Math.floor((totalMinutes % 1440) / 60);
-    const minutes = totalMinutes % 60;
-
-    const timeSegments = [];
-
-    // Formatage de chaque unité via l'API (en retirant le préfixe "dans ")
-    if (days > 0) {
-      timeSegments.push(rtf.format(days, 'day').replace(/^dans\s+/, ''));
-    }
-    if (hours > 0) {
-      timeSegments.push(rtf.format(hours, 'hour').replace(/^dans\s+/, ''));
-    }
-    // On affiche les minutes si elles sont présentes, ou si le delta total est de 0
-    if (minutes > 0 || timeSegments.length === 0) {
-      timeSegments.push(rtf.format(minutes, 'minute').replace(/^dans\s+/, ''));
-    }
-
-    // 5. Union des segments avec l'API internationale
-    const timeText = listFormatter.format(timeSegments);
+    const { erreur_hPa, erreur_m, messageExpectedLocalPressure } = calculatePressureUncertainty(
+      pWeatherCurrent,
+      currentAltitude,
+      totalMinutes,
+      décalage_hPa
+    );
+    const timeText = formatElapsedTime(totalMinutes);
 
     // Les métriques détaillent la correction totale par phénomène météo.
     // 5. Mise à jour de l'affichage des résultats graphiques principaux

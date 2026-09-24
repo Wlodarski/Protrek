@@ -546,26 +546,42 @@ async function computeResult() {
     const deltaAlt = trueAltitude - calibrationAltitude;
     const décalage_hPa = await getCalError();
 
-    const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
-    const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
-    // selon mon test : ±0.4 hPa (~3.4 m) par temps calme
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude + 3.4) + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude - 3.4) + décalage_hPa);
-    const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
-      `de ${expectedLocalPressureMIN} hPa` :
-      `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
-
-
     // 2. Calcul de la différence de temps absolue totale en minutes
     const calTimeMs = new Date(calTimeStr).getTime();
     const nowTimeMs = Date.now();
     const totalMinutes = Math.abs(Math.round((nowTimeMs - calTimeMs) / 60000));
 
-    // 3. Initialisation des API internationales de formatage
+    // 3. Calcul de la pression théorique affichée
+    const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
+    const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
+
+    /* REQM (Root Mean Squared Error)
+    -----------------------------
+    Pour fournir une marge d'erreur réaliste sous la forme P(t) ± erreur(t), 
+    il est préférable d'utiliser la REQM (Racine de l'Erreur Quadratique Moyenne) 
+    ou l'Écart-Type de l'erreur. 
+    
+    En statistique, si l'erreur suit une loi normale, 
+    une marge de 1 x REQM couvre environ 68 % des situations réelles, 
+    et 2 x REQM en couvre environ 95 %. 
+
+    sigma(heures) = (0,35 + 0,025 * heures) hPa
+      exemple, après 10 heures et demi, 0,35 + 0,024*10,5 = ± 0,602 hPa
+
+    */
+    const sigma = 0.35 + 0.025 * totalMinutes / 60;
+    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) - sigma + décalage_hPa);
+    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent, currentAltitude) + sigma + décalage_hPa);
+    const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
+      `de ${expectedLocalPressureMIN} hPa` :
+      `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
+
+
+    // 5. Initialisation des API internationales de formatage
     const rtf = new Intl.RelativeTimeFormat('fr-CA', { numeric: 'always' });
     const listFormatter = new Intl.ListFormat('fr-CA', { style: 'long', type: 'conjunction' });
 
-    // 4. Extraction des composants (Jours, Heures, Minutes)
+    // 6. Extraction des composants (Jours, Heures, Minutes)
     const days = Math.floor(totalMinutes / 1440);
     const hours = Math.floor((totalMinutes % 1440) / 60);
     const minutes = totalMinutes % 60;
@@ -619,7 +635,7 @@ async function computeResult() {
       messageExpectedLocalPressure,
       `, idéalement `,
       Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
-      (décalage_hPa !==0) ?` (${calculatePressureAltitude.toFixed(1)} hPa, décalé de ${décalage_hPa} hPa).`:'.',
+      (décalage_hPa !== 0) ? ` (${calculatePressureAltitude.toFixed(1)} hPa, décalé de ${décalage_hPa} hPa).` : '.',
 
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),

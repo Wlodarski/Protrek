@@ -560,6 +560,8 @@ async function computeResult() {
     const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
     const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
 
+    console.log(calculatePressureAltitude, décalage_hPa, expectedLocalPressure);
+
     /* REQM (Root Mean Squared Error)
     -----------------------------
     Pour fournir une marge d'erreur réaliste sous la forme P(t) ± erreur(t), 
@@ -570,14 +572,15 @@ async function computeResult() {
     une marge de 1 x REQM couvre environ 68 % des situations réelles, 
     et 2 x REQM en couvre environ 95 %. 
 
-    sigma(heures) = (0,35 + 0,025 * heures) hPa
-      exemple, après 10 heures et demi, 0,35 + 0,024*10,5 = ± 0,602 hPa
-
+    sigma(heures) = (0,35 + 0,025 * heures) 
+    erreur_95%(h) = ± 2 * SQRT(0,35^2 +(0.025*h)^2)
+    = ± SQRT(0,49 + 0.0025* h^2)
+    
     */
-    const sigma_hPa = 0.35 + 0.025 * totalMinutes / 60; // hPa
-    const sigmaAlt = calculatePressureAtAltitude(pWeatherCurrent + 2 * sigma_hPa, currentAltitude) - calculatePressureAtAltitude(pWeatherCurrent - 2 * sigma_hPa, currentAltitude); // m
-    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent - 2 * sigma_hPa, currentAltitude) + décalage_hPa);
-    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent + 2 * sigma_hPa, currentAltitude) + décalage_hPa);
+    const erreur_hPa = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2)); // hPa
+    const erreur_m = calculatePressureAtAltitude(pWeatherCurrent + erreur_hPa, currentAltitude) - calculatePressureAtAltitude(pWeatherCurrent - erreur_hPa, currentAltitude); // m
+    const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent - erreur_hPa, currentAltitude) + décalage_hPa);
+    const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pWeatherCurrent + erreur_hPa, currentAltitude) + décalage_hPa);
     const messageExpectedLocalPressure = expectedLocalPressureMIN == expectedLocalPressureMAX ?
       `de ${expectedLocalPressureMIN} hPa` :
       `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
@@ -647,14 +650,14 @@ async function computeResult() {
       Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
       '. Ce calcul intègre ',
       (décalage_hPa !== 0) ? `le décalage systématique du capteur (${décalage_hPa} hPa) et ` : ' ',
-      `la marge d’erreur météo à 95 % (±${(2 * sigma_hPa).toFixed(1)} hPa, équivalant à ±${sigmaAlt.toFixed(1)} m).`,
+      `la marge d’erreur météo à 95 % (±${(erreur_hPa).toFixed(1)} hPa, équivalant à ±${erreur_m.toFixed(1)} m).`,
 
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),
-      
+
       /* 
       Les conditions météo sont stables et calmes. */
-      
+
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
       Object.assign(document.createElement('span'), {
         textContent: severityText,

@@ -111,10 +111,10 @@ refreshBtn.addEventListener('click', async () => {
   if (statusEl) statusEl.replaceChildren();
 
   try {
-    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js');
-    const forecast = await fetchCombinedForecast();
-    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
-    updateForecastCoverage(forecast);
+    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js'); 
+    const forecast = await fetchCombinedForecast(); 
+    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast)); 
+    updateForecastCoverage(forecast); 
 
     // Valeurs par défaut pour la calibration
     const location = getStoredLocation();
@@ -125,29 +125,20 @@ refreshBtn.addEventListener('click', async () => {
         detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
       }));
     }
-    timeInput.value = buildCurrentTimeString().slice(0, 16);
+    timeInput.value = buildCurrentTimeString().slice(0, 16); 
 
-    // Met à jour la carte
-    const nouvelleCarteURL = await fetchMap(forecast.location);
+    // Téléchargement de la nouvelle carte
+    const nouvelleCarteURL = await fetchMap(forecast.location); 
 
-    // CORRIGÉ : Utilisation de carteEl déjà déclaré ou récupération sécurisée
-    if (nouvelleCarteURL && carteEl) {
-      if (carteEl.src.startsWith('blob:')) {
-        URL.revokeObjectURL(carteEl.src);
-      }
-      carteEl.src = nouvelleCarteURL;
-    } else if (carteEl && !carteEl.src) {
-      carteEl.src = "img\\cartevide.webp";
-    }
+    // Révocation de l'ancienne carte et mise à jour de la nouvelle en une seule ligne
+    metAJourImageCarte(nouvelleCarteURL);
 
-
-    // Message final de validation
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' }
+    window.dispatchEvent(new CustomEvent('gps-status', { 
+      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' } 
     }));
   } catch (error) {
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' }
+    window.dispatchEvent(new CustomEvent('gps-status', { 
+      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' } 
     }));
   }
 });
@@ -232,12 +223,19 @@ async function checkCacheValidity() {
  */
 async function afficheCarte() {
   if (carteEl) {
+    const cachedMapUrl = await getStoredMapUrl(); 
+    metAJourImageCarte(cachedMapUrl);
+  }
+}
+
+
+/**
+ * Charge la carte enregistrée en cache et l'affiche si elle existe encore.
+ */
+async function afficheCarte() {
+  if (carteEl) {
     const cachedMapUrl = await getStoredMapUrl();
-    if (cachedMapUrl) {
-      carteEl.src = cachedMapUrl;
-    } else {
-      carteEl.src = "img\\cartevide.webp";
-    }
+    metAJourImageCarte(cachedMapUrl);
   }
 }
 

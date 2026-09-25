@@ -111,10 +111,10 @@ refreshBtn.addEventListener('click', async () => {
   if (statusEl) statusEl.replaceChildren();
 
   try {
-    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js'); 
-    const forecast = await fetchCombinedForecast(); 
-    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast)); 
-    updateForecastCoverage(forecast); 
+    const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js');
+    const forecast = await fetchCombinedForecast();
+    localStorage.setItem(FORECAST_STORAGE_KEY, JSON.stringify(forecast));
+    updateForecastCoverage(forecast);
 
     // Valeurs par défaut pour la calibration
     const location = getStoredLocation();
@@ -125,20 +125,20 @@ refreshBtn.addEventListener('click', async () => {
         detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
       }));
     }
-    timeInput.value = buildCurrentTimeString().slice(0, 16); 
+    timeInput.value = buildCurrentTimeString().slice(0, 16);
 
     // Téléchargement de la nouvelle carte
-    const nouvelleCarteURL = await fetchMap(forecast.location); 
+    const nouvelleCarteURL = await fetchMap(forecast.location);
 
     // Révocation de l'ancienne carte et mise à jour de la nouvelle en une seule ligne
     metAJourImageCarte(nouvelleCarteURL);
 
-    window.dispatchEvent(new CustomEvent('gps-status', { 
-      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' } 
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: 'Prévisions actualisées. Veuillez calibrer la montre.', type: 'success' }
     }));
   } catch (error) {
-    window.dispatchEvent(new CustomEvent('gps-status', { 
-      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' } 
+    window.dispatchEvent(new CustomEvent('gps-status', {
+      detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' }
     }));
   }
 });
@@ -542,36 +542,37 @@ function calculatePressureUncertainty(pressure, altitude, totalMinutes, calibrat
   une marge de 1 x REQM couvre environ 68 % des situations réelles,
   et 2 x REQM en couvre environ 95 %.
 
-  sigma(heures) = (0,35 + 0,025 * heures)
-  erreur_95%(h) = ± 2 * SQRT(0,35^2 +(0.025*h)^2)
-  = ± SQRT(0,49 + 0.0025* h^2)
+  Formule officielle des météorologues : 
+  erreur_95%(h) = ± 2 * SQRT(0.35^2 + (0.025 * h)^2)
+
+  Formule barométrique finale (Plancher initial à ±0.5 m (±0.06 hPa), demi-vie de calibration stricte de 1h) :
+  erreur_95%(h) = ± 2 * SQRT(0.0009 + 0.1216 * (1 - EXP(-0.693 * h)) + (0.025 * h)^2)
   */
+  const heures = totalMinutes / 60;
 
-  // Calcul de la marge d'erreur barométrique quadratique à 95% (en hPa)
-  const calculErreur = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2));
-
-  // Calcul de la dérive de pression pure (on soustrait l'incertitude initiale de 0.7 hPa)
-  const derive_hPa = Math.max(0, calculErreur - 0.7);
+  // Calcul de la marge barométrique (Transition rigoureuse par loi de demi-vie, plancher à ±0.06 hPa à t=0)
+  const erreur_hPa = 2 * Math.sqrt(0.0009 + 0.1216 * (1 - Math.exp(-0.693 * heures)) + Math.pow(0.025 * heures, 2));
 
   // Conversion en mètres ISA uniquement basée sur la dérive temporelle accumulée
-  const altPressionBasse = calculateAltitudeFromPressure(pressure - derive_hPa);
-  const altPressionHaute = calculateAltitudeFromPressure(pressure + derive_hPa);
+  const altPressionBasse = calculateAltitudeFromPressure(pressure - erreur_hPa);
+  const altPressionHaute = calculateAltitudeFromPressure(pressure + erreur_hPa);
   const erreur_m = Math.abs(altPressionBasse - altPressionHaute) / 2; // m
 
   // Calcul des bornes de pression locale affichées par la montre (avec décalage et troncation)
-  const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pressure - derive_hPa, altitude) + calibrationError);
-  const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pressure + derive_hPa, altitude) + calibrationError);
+  const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pressure - erreur_hPa, altitude) + calibrationError);
+  const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pressure + erreur_hPa, altitude) + calibrationError);
+  
   const messageExpectedLocalPressure = expectedLocalPressureMIN === expectedLocalPressureMAX
     ? `de ${expectedLocalPressureMIN} hPa`
     : `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
 
-  // On aligne strictement le nom de la clé retournée avec la déstructuration de computeResult
   return {
-    erreur_hPa: derive_hPa,
+    erreur_hPa,
     erreur_m,
     messageExpectedLocalPressure
   };
 }
+
 
 /**
  * Ajoute le signe et la précision appropriés aux valeurs de pression.

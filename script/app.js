@@ -228,6 +228,21 @@ async function afficheCarte() {
   }
 }
 
+/**
+ * Met à jour l'affichage de la carte et libère proprement la mémoire RAM.
+ */
+function metAJourImageCarte(nouvelleUrl) {
+  if (!carteEl) return;
+
+  // Si l'ancienne image était un Blob local, on force sa révocation immédiate
+  if (carteEl.src && carteEl.src.startsWith('blob:')) {
+    URL.revokeObjectURL(carteEl.src);
+  }
+
+  // Applique la nouvelle URL ou l'image par défaut en cas de panne
+  carteEl.src = nouvelleUrl || "img\\cartevide.webp";
+}
+
 
 /**
  * Récupère les prévisions météo depuis le cache local ou les télécharge si nécessaire.

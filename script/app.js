@@ -223,7 +223,7 @@ async function checkCacheValidity() {
  */
 async function afficheCarte() {
   if (carteEl) {
-    const cachedMapUrl = await getStoredMapUrl(); 
+    const cachedMapUrl = await getStoredMapUrl();
     metAJourImageCarte(cachedMapUrl);
   }
 }

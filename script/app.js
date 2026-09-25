@@ -547,6 +547,8 @@ function calculatePressureUncertainty(pressure, altitude, totalMinutes, calibrat
 
   Formule barométrique finale (Plancher initial à ±0.5 m (±0.06 hPa), demi-vie de calibration stricte de 1h) :
   erreur_95%(h) = ± 2 * SQRT(0.0009 + 0.1216 * (1 - EXP(-0.693 * h)) + (0.025 * h)^2)
+
+  Voir docs\Erreur supposée.jpg
   */
   const heures = totalMinutes / 60;
 

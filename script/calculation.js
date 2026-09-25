@@ -9,8 +9,9 @@ export function calculateAltitudeFromPressure(pressure_hpa) {
   const P0_HPA = 1013.25;
   const ratio_p_p0 = pressure_hpa / P0_HPA;
   const altitude_m = (T0_K / L_LAPSE) * (1 - (ratio_p_p0 ** EXPOSANT));
-  return Number.isFinite(altitude_m) ? Math.round(altitude_m) : null;
+  return Number.isFinite(altitude_m) ? altitude_m : null;
 }
+
 /**
  * Transforme une date locale au format ISO en minutes écoulées pour faciliter les calculs temporels.
  */
@@ -98,7 +99,6 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
 
   return h00 * v0 + h10 * (tDelta * slope0) + h01 * v1 + h11 * (tDelta * slope1);
 }
-
 
 /**
  * Détermine si la situation actuelle doit être utilisée au lieu des prévisions pour une heure cible.

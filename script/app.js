@@ -542,26 +542,42 @@ function calculatePressureUncertainty(pressure, altitude, totalMinutes, calibrat
   erreur_95%(h) = ± 2 * SQRT(0,35^2 +(0.025*h)^2)
   = ± SQRT(0,49 + 0.0025* h^2)
   */
+
   // Calcul de la marge d'erreur barométrique quadratique à 95% (en hPa)
-  const erreur_hPa = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2));
+  const calculErreur = Math.sqrt(0.49 + 0.0025 * Math.pow(totalMinutes / 60, 2));
 
-  // Conversion rigoureuse en mètres ISA
-  // Plus la pression augmente (+ erreur), plus l'altitude théorique diminue
-  const altPressionBasse = calculateAltitudeFromPressure(pressure - erreur_hPa);
-  const altPressionHaute = calculateAltitudeFromPressure(pressure + erreur_hPa);
+  // Calcul de la dérive de pression pure (on soustrait l'incertitude initiale de 0.7 hPa)
+  const derive_hPa = Math.max(0, calculErreur - 0.7);
 
-  // L'écart géométrique total divisé par 2 donne le ± autour de la valeur centrale
-  const erreur_m = Math.abs(altPressionBasse - altPressionHaute) / 2;
+  // Conversion en mètres ISA uniquement basée sur la dérive temporelle accumulée
+  const altPressionBasse = calculateAltitudeFromPressure(pressure - derive_hPa);
+  const altPressionHaute = calculateAltitudeFromPressure(pressure + derive_hPa);
+  const erreur_m = Math.abs(altPressionBasse - altPressionHaute) / 2; // m
 
   // Calcul des bornes de pression locale affichées par la montre (avec décalage et troncation)
-  const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pressure - erreur_hPa, altitude) + calibrationError);
-  const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pressure + erreur_hPa, altitude) + calibrationError);
+  const expectedLocalPressureMIN = Math.trunc(calculatePressureAtAltitude(pressure - derive_hPa, altitude) + calibrationError);
+  const expectedLocalPressureMAX = Math.trunc(calculatePressureAtAltitude(pressure + derive_hPa, altitude) + calibrationError);
   const messageExpectedLocalPressure = expectedLocalPressureMIN === expectedLocalPressureMAX
     ? `de ${expectedLocalPressureMIN} hPa`
     : `entre ${expectedLocalPressureMIN} hPa et ${expectedLocalPressureMAX} hPa`;
 
-  return { erreur_hPa, erreur_m, messageExpectedLocalPressure };
+  // On aligne strictement le nom de la clé retournée avec la déstructuration de computeResult
+  return {
+    erreur_hPa: derive_hPa,
+    erreur_m,
+    messageExpectedLocalPressure
+  };
 }
+
+/**
+ * Ajoute le signe et la précision appropriés aux valeurs de pression.
+ */
+function formatSignedPressure(value, decimals = 1) {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const magnitude = Math.abs(value);
+  return `${sign}${magnitude.toFixed(decimals)} hPa`;
+}
+
 
 
 /**
@@ -601,7 +617,7 @@ async function computeResult() {
       relativeHumidityCurrent: humidityCurrent,
       severityCurrent
     } = getWeatherValues(rawData, calTimeStr, targetTimeStr);
-    const severityText = SEVERITY_QUALIFIERS[severityCurrent] || SEVERITY_QUALIFIERS;
+    const severityText = SEVERITY_QUALIFIERS[severityCurrent] || SEVERITY_QUALIFIERS[0];
 
 
     // Sans ces six valeurs, une correction serait numériquement trompeuse.
@@ -672,8 +688,8 @@ async function computeResult() {
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),
 
-      /* Votre montre devrait afficher entre 1029 hPa et 1033 hPa. 
-      Ce calcul intègre le décalage systématique du capteur (+2,953 hPa) 
+      /* Votre montre devrait afficher entre 1029 hPa et 1033 hPa.
+      Ce calcul intègre le décalage systématique du capteur (+2,953 hPa)
       et la marge d'erreur météo à 95 % (±2,0 hPa, équivalant à ±3,9 m). */
 
       'Votre montre devrait afficher ',
@@ -681,13 +697,13 @@ async function computeResult() {
       `, idéalement `,
       Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
       '. Ce calcul intègre ',
-      (décalage_hPa !== 0) ? `le décalage systématique du capteur (${décalage_hPa} hPa) et ` : ' ',
-      `la marge d’erreur météo à 95 % (±${(erreur_hPa).toFixed(1)} hPa, équivalant à ±${erreur_m.toFixed(1)} m).`,
+      (décalage_hPa !== 0) ? `le décalage systématique du capteur (${formatSignedPressure(décalage_hPa, 3)}) et ` : ' ',
+      `la marge d’erreur météo à 95 % (±${(erreur_hPa).toFixed(2)} hPa, équivalant à ±${erreur_m.toFixed(1)} m).`,
 
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),
 
-      /* 
+      /*
       Les conditions météo sont stables et calmes. */
 
       // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée

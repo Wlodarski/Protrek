@@ -230,17 +230,6 @@ async function afficheCarte() {
 
 
 /**
- * Charge la carte enregistrée en cache et l'affiche si elle existe encore.
- */
-async function afficheCarte() {
-  if (carteEl) {
-    const cachedMapUrl = await getStoredMapUrl();
-    metAJourImageCarte(cachedMapUrl);
-  }
-}
-
-
-/**
  * Récupère les prévisions météo depuis le cache local ou les télécharge si nécessaire.
  */
 async function loadForecast() {

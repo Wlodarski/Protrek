@@ -572,7 +572,7 @@ This matches ECMWF's actual AIFS system and explains why the empirical
 
   // Calcul de la marge barométrique (Transition rigoureuse par loi de demi-vie, plancher à ±0.06 hPa à t=0)
   //const erreur_hPa = 2 * Math.sqrt(0.0009 + 0.1216 * (1 - Math.exp(-0.693 * heures)) + Math.pow(0.025 * heures, 2));
-  const erreur_hPa = 2* (Math.sqrt(0.35*0.35 + (0.025*hours)*(0.025*hours)) / Math.sqrt(51));
+  const erreur_hPa = 2 * (Math.sqrt(0.35 * 0.35 + (0.025 * heures) * (0.025 * heures)) / Math.sqrt(51));
 
   // Conversion en mètres ISA uniquement basée sur la dérive temporelle accumulée
   const altPressionBasse = calculateAltitudeFromPressure(pressure - erreur_hPa);

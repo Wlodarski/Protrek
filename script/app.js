@@ -553,7 +553,7 @@ function calculatePressureUncertainty(pressure, altitude, totalMinutes, calibrat
   const heures = totalMinutes / 60;
 
   // Calcul de la marge barométrique (Transition rigoureuse par loi de demi-vie, plancher à ±0.06 hPa à t=0)
-  const erreur_hPa = 2 * Math.sqrt(0.0009 + 0.1216 * (1 - Math.exp(-0.693 * heures)) + Math.pow(0.025 * heures, 2));
+  const erreur_hPa = 1 * Math.sqrt(0.0009 + 0.1216 * (1 - Math.exp(-0.693 * heures)) + Math.pow(0.025 * heures, 2));
 
   // Conversion en mètres ISA uniquement basée sur la dérive temporelle accumulée
   const altPressionBasse = calculateAltitudeFromPressure(pressure - erreur_hPa);
@@ -705,7 +705,7 @@ async function computeResult() {
       Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
       '. Ce calcul intègre ',
       (décalage_hPa !== 0) ? `le décalage systématique du capteur (${formatSignedPressure(décalage_hPa, 3)}) et ` : ' ',
-      `la marge d’erreur météo à 95 % (±${(erreur_hPa).toFixed(2)} hPa, équivalant à ±${erreur_m.toFixed(1)} m).`,
+      `la marge d’erreur météo à un écart-type (±${(erreur_hPa).toFixed(2)} hPa, équivalant à ±${erreur_m.toFixed(1)} m).`,
 
       Object.assign(document.createElement('br')),
       Object.assign(document.createElement('br')),

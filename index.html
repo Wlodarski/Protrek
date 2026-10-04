@@ -133,6 +133,7 @@
       margin: 0 0 22px;
       color: var(--muted);
       font-size: 0.96rem;
+      cursor: pointer;
     }
 
     form {
@@ -230,9 +231,9 @@
       touch-action: auto;
     }
 
-      html[data-theme="dark"] .carte {
-        filter: invert(1);
-      }
+    html[data-theme="dark"] .carte {
+      filter: invert(1);
+    }
 
     .carte:hover {
       object-fit: none;
@@ -331,8 +332,9 @@
   <main class="panel">
     <h1 id="themeToggle" tabindex="0" role="button" aria-label="Changer de palette de couleurs"
       title="Changer de palette de couleurs">Calibration Pro Trek <sup class="theme" id="theme"></sup></h1>
-    <p class="subtitle">Calcule l’altitude réelle corrigée à partir de la pression, de la température et de
-      l’humidité.
+    <p class="subtitle" role="button" aria-label="Afficher l'horloge 24 heures"
+      onclick="window.location='horloge.html';">Calcule l’altitude réelle corrigée à partir de la pression, de la
+      température et de l’humidité.
     </p>
 
     <form id="calibrationForm">

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'protrek-v9';
+const CACHE_NAME = 'protrek-v10';
 
 // Domaines d'API externes à exclure absolument du cache du Service Worker
 const EXCLUDED_HOSTNAMES = [
@@ -9,6 +9,7 @@ const EXCLUDED_HOSTNAMES = [
 
 const STATIC_FILES = [
   './index.html',
+  './horloge.html',
   './manifest.json',
   './script/main.js',
   './script/app.js',
@@ -18,6 +19,7 @@ const STATIC_FILES = [
   './script/weather_client.js',
   './script/theme.js',
   './script/version.js',
+  './script/horloge.js',
   './icons/protrek-192.svg',
   './icons/protrek-512.svg'
 ];

@@ -262,37 +262,66 @@ let clockAnimationId = null;
 
 // Boucle d'animation principale
 function updateClock() {
-    // MODE ÉCONOMIE D'ÉNERGIE : Si l'onglet est masqué, on stoppe net l'animation
+    // MODE ÉCONOMIE D'ÉNERGIE
     if (document.hidden || document.visibilityState === 'hidden') {
         clockAnimationId = null;
         return;
     }
 
+    // 1. DÉCLARATION PRIORITAIRE DU TEMPS SYSTÈME
+    const now = new Date();
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // 2. RENDU DES COUCHES INFÉRIEURES (Cadran)
     ctx.save(); drawDial(); ctx.restore();
+    
+    // 3. INJECTION DES TRAITS BLEUS SOLAIRES
+    if (typeof window.getSunEventAngles === 'function') {
+        const sunAngles = window.getSunEventAngles(now); // Passe la date actuelle en paramètre
+        if (sunAngles) {
+            ctx.save();
+            ctx.strokeStyle = HANDS.second.color; // Bleu cyan assorti à la trotteuse
+            ctx.lineWidth = Math.max(3, size * 0.008);
+            ctx.lineCap = "round";
+
+            const angles = [sunAngles.sunriseAngleRad, sunAngles.sunsetAngleRad];
+            
+            angles.forEach(angleRad => {
+                const finalAngle = angleRad - Math.PI / 2;
+
+                // Longueur ajustée pour mordre parfaitement sur la couronne des index extérieurs
+                const xStart = centerX + Math.cos(finalAngle) * (r - (size * 0.035));
+                const yStart = centerY + Math.sin(finalAngle) * (r - (size * 0.035));
+                const xEnd = centerX + Math.cos(finalAngle) * (r - 2);
+                const yEnd = centerY + Math.sin(finalAngle) * (r - 2);
+
+                ctx.beginPath();
+                ctx.moveTo(xStart, yStart);
+                ctx.lineTo(xEnd, yEnd);
+                ctx.stroke();
+            });
+            
+            ctx.restore();
+        }
+    }
+
     ctx.save(); drawDate(); ctx.restore();
 
-    const now = new Date();
+    // 4. CALCULS DU MOUVEMENT DES AIGUILLES (Maintenant synchronisés et sécurisés)
     const hour = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     const ms = now.getMilliseconds() || 0;
 
-    // Seconds et minutes (selon votre logique d'origine)
     const sAngle = ((seconds + ms / 1000) * (Math.PI * 2)) / 60;
     const minuteCinquieme = minutes + Math.floor(seconds / 12) * 0.2;
     const mAngle = (minuteCinquieme * (Math.PI * 2)) / 60;
 
-    // CORRECTION : Sauts stricts toutes les 10 minutes sans aucune avance active
-    // Math.floor(minutes / 10) * 10 isole les blocs de 10 minutes passées (0, 10, 20, 30, 40, 50)
     const heureDixMinutes = hour + (Math.floor(minutes / 10) * 10) / 60;
-
-    // Application de l'angle sur le cadran 24h (+ Math.PI gère l'inversion d'origine du cadran)
     const hAngle = (heureDixMinutes * (Math.PI * 2)) / 24 + Math.PI;
 
-
-    // Calcul des longueurs et épaisseurs dynamiques des aiguilles
+    // 5. RENDU DES AIGUILLES ET FINITIONS
     drawHand(mAngle, size * HANDS.minute.lenFactor, HANDS.minute.color, size * HANDS.minute.widthFactor);
     drawHand(mAngle, size * HANDS.minute.lenFactor + (size * 0.03), HANDS.minute.color, size * HANDS.minute.widthFactor / 4);
     drawHand(hAngle, size * HANDS.hour.lenFactor, HANDS.hour.color, size * HANDS.hour.widthFactor);
@@ -305,16 +334,16 @@ function updateClock() {
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
     ctx.beginPath(); 
-    ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2); // bouton au center
+    ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2); 
     ctx.fillStyle = HANDS.second.color;
     ctx.fill();
     ctx.restore();
 
     drawGlass();
 
-    // On stocke l'ID pour pouvoir gérer l'arrêt/relance proprement
     clockAnimationId = requestAnimationFrame(updateClock);
 }
+
 
 // GESTIONNAIRE DE VISIBILITÉ (Économiseur d'énergie matériel)
 function handleVisibilityChange() {

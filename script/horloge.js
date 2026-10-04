@@ -22,7 +22,7 @@ let r = 147;          // Rayon maximal du cadran extérieur
 // Configuration des aiguilles (facteurs proportionnels à la taille de l'écran)
 const HANDS = {
     minute: { lenFactor: 0.31, color: '#eef2f7', widthFactor: 0.02 }, // S'arrête pile à la piste interne
-    hour: { lenFactor: 0.23, color: '#fff', widthFactor: 0.04 },       // Navigue dans la zone centrale
+    hour: { lenFactor: 0.23, color: '#e7edf4', widthFactor: 0.04 },       // Navigue dans la zone centrale
     second: { lenFactor: 0.33, color: '#38bdf8', widthFactor: 0.01 }  // Frôle délicatement la piste interne
 };
 
@@ -322,10 +322,10 @@ function updateClock() {
     const hAngle = (heureDixMinutes * (Math.PI * 2)) / 24 + Math.PI;
 
     // 5. RENDU DES AIGUILLES ET FINITIONS
-    drawHand(mAngle, size * HANDS.minute.lenFactor * 0.8, HANDS.minute.color, size * HANDS.minute.widthFactor);
-    drawHand(mAngle, size * HANDS.minute.lenFactor + (size * 0.03), HANDS.minute.color, size * HANDS.minute.widthFactor / 4);
-    drawHand(hAngle, size * HANDS.hour.lenFactor, HANDS.hour.color, size * HANDS.hour.widthFactor);
     drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.16), HANDS.hour.color, size * HANDS.hour.widthFactor / 9);
+    drawHand(hAngle, size * HANDS.hour.lenFactor, HANDS.hour.color, size * HANDS.hour.widthFactor);
+    drawHand(mAngle, size * HANDS.minute.lenFactor * 0.82, HANDS.minute.color, size * HANDS.minute.widthFactor);
+    drawHand(mAngle, size * HANDS.minute.lenFactor + (size * 0.03), HANDS.minute.color, size * HANDS.minute.widthFactor / 7);
     drawHand(sAngle, size * HANDS.second.lenFactor, HANDS.second.color, size * HANDS.second.widthFactor);
 
     ctx.save();

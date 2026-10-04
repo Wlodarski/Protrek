@@ -21,9 +21,9 @@ let r = 147;          // Rayon maximal du cadran extérieur
 
 // Configuration des aiguilles (facteurs proportionnels à la taille de l'écran)
 const HANDS = {
-    minute: { lenFactor: 0.31, color: '#942020', widthFactor: 0.02 }, // S'arrête pile à la piste interne
+    minute: { lenFactor: 0.31, color: '#fff', widthFactor: 0.02 }, // S'arrête pile à la piste interne
     hour: { lenFactor: 0.23, color: '#fff', widthFactor: 0.04 },       // Navigue dans la zone centrale
-    second: { lenFactor: 0.33, color: '#ffd700', widthFactor: 0.01 }  // Frôle délicatement la piste interne
+    second: { lenFactor: 0.33, color: '#38bdf8', widthFactor: 0.01 }  // Frôle délicatement la piste interne
 };
 
 /**
@@ -125,7 +125,7 @@ function drawDial() {
     // Grand cercle extérieur de délimitation
     ctx.beginPath();
     ctx.arc(centerX, centerY, r - 2, 0, Math.PI * 2);
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
     ctx.lineWidth = size * 0.013;
     ctx.stroke();
 
@@ -179,7 +179,7 @@ function drawDial() {
         const isCardinalMinute = (s % 5 === 0);        // Marque un repère plus fort toutes les 5 minutes
 
         const longueurTrait = isCardinalMinute ? (size * 0.026) : (size * 0.013);
-        const couleurTrait = '#ffd700'; // Couleur jaune uniforme
+        const couleurTrait = HANDS.second.color; 
         const epaisseurTrait = isCardinalMinute ? Math.max(2, size * 0.006) : 1;
 
         const xStart = centerX + Math.cos(angleRad) * rMinutes;
@@ -243,15 +243,15 @@ function drawDate() {
 
     // --- 1. GUICHET DU JOUR (VEN) ---
     const yJour = yBase - (size * 0.133);
-    drawInsetBox(xBase, yJour, wBox, size * 0.06, 3, '#444', '#131313');
-    ctx.fillStyle = '#ffd700';
+    drawInsetBox(xBase, yJour, wBox, size * 0.06, 3, '#526174', '#172033');
+    ctx.fillStyle = HANDS.second.color;
     ctx.font = `bold ${Math.round(size * 0.036)}px sans-serif`;
     ctx.fillText(dayName, xBase, yJour + 2);
 
     // --- 2. GUICHET DU NUMÉRO (02) ---
     const yNum = yBase;
-    drawInsetBox(xBase, yNum, wBox, size * 0.093, 4, '#444', '#131313');
-    ctx.fillStyle = '#ffd700';
+    drawInsetBox(xBase, yNum, wBox, size * 0.093, 4, '#526174', '#172033');
+    ctx.fillStyle = HANDS.second.color;
     ctx.font = `bold ${Math.round(size * 0.066)}px sans-serif`;
     ctx.fillText(dayNum, xBase, yNum + 3);
 }
@@ -304,9 +304,9 @@ function updateClock() {
     ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); 
+    ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2); // bouton au center
+    ctx.fillStyle = HANDS.second.color;
     ctx.fill();
     ctx.restore();
 

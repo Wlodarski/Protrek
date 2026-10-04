@@ -5,8 +5,14 @@
  */
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEG_TO_RAD = Math.PI / 180;
-const RAD_TO_DEG = 180 / Math.PI; 
+const RAD_TO_DEG = 180 / Math.PI;
 
+/**
+ * Ajoute un nombre de jours à une date donnée.
+ * @param {Date} date - La date d'origine.
+ * @param {number} days - Le nombre de jours à ajouter (ou soustraire).
+ * @returns {Date} Une nouvelle instance de Date ajustée.
+ */
 function addDays(date, days) {
     const res = new Date(date);
     res.setDate(res.getDate() + days);
@@ -14,130 +20,103 @@ function addDays(date, days) {
 }
 
 /**
- * Formate un timestamp Unix en chaîne de caractères heure:minute local.
+ * Formate un timestamp Unix en chaîne de caractères heure:minute locale.
+ * @param {number} timestampMs - Le timestamp en millisecondes.
+ * @returns {string} L'heure formatée au format HH:MM ou "Inconnue".
  */
 function formatTime(timestampMs) {
-     if (!timestampMs || isNaN(timestampMs)) return "Inconnue";
-     const date = new Date(timestampMs); 
-     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (!timestampMs || isNaN(timestampMs)) return "Inconnue";
+    const date = new Date(timestampMs);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
 
 /**
  * ============================================================================
- * CORE LOGIC : CALCUL ASTRONOMIQUE DE LEVER/COUCHER
+ * CORE LOGIC : CALCUL ASTRONOMIQUE DE LEVER/COUCHER (ALGORITHME NOAA STRICT)
  * ============================================================================
  */
 function calculateEventTime(lat, lon, date, isSunset = false) {
     const latRad = lat * DEG_TO_RAD;
-    const start = new Date(date.getFullYear(), 0, 0);
-    const diff = date - start;
-    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    // 1. CALCUL DU SIÈCLE JULIEN (Époque J2000.0)
+    // On convertit le temps Unix de la machine en Date Julienne astronomique.
+    // 2440587.5 correspond au point de départ de l'époque Unix (1er janvier 1970).
+    const julianDate = (date.getTime() / 86400000) + 2440587.5;
+    // t représente le nombre de siècles juliens (36525 jours) écoulés depuis le repère J2000.0 (1er janvier 2000 à 12h00 UT).
+    const t = (julianDate - 2451545.0) / 36525.0;
 
-    // Déclinaison solaire précise (en radians)
-    const declinationRad = 23.45 * DEG_TO_RAD * Math.sin((2 * Math.PI / 365) * (284 + dayOfYear));
-    const altRad = -0.833 * DEG_TO_RAD; 
+    // 2. GÉOMÉTRIE ORBITALE DU SOLEIL (Modèle NOAA)
+    // Longitude moyenne du soleil (position théorique sur une orbite circulaire parfaite)
+    let geoMeanLongSun = (280.46646 + t * 36000.76983) % 360;
+    if (geoMeanLongSun < 0) geoMeanLongSun += 360;
 
-    // Formule exacte de l'angle horaire cos(H)
+    // Anomalie moyenne du soleil (angle mesurant la distance par rapport au point le plus proche de son orbite elliptique)
+    let geoMeanAnomSun = (357.52911 + t * 35999.05029) % 360;
+    if (geoMeanAnomSun < 0) geoMeanAnomSun += 360;
+    const geoMeanAnomSunRad = geoMeanAnomSun * DEG_TO_RAD;
+
+    // Équation du centre du soleil (correction géométrique pour passer de l'orbite circulaire à l'orbite elliptique réelle)
+    const sunEqCenter = Math.sin(geoMeanAnomSunRad) * (1.914602 - t * 0.004817) + 
+                        Math.sin(2 * geoMeanAnomSunRad) * (0.019993 - t * 0.000101) + 
+                        Math.sin(3 * geoMeanAnomSunRad) * 0.000289;
+    
+    // Longitude vraie du soleil (sa position angulaire réelle sur l'écliptique)
+    const sunTrueLong = geoMeanLongSun + sunEqCenter;
+    
+    // Obliquité moyenne et corrigée de l'écliptique (inclinaison naturelle de l'axe de rotation de la Terre)
+    const meanObliqEcliptic = 23.439291 - t * (46.815 / 3600);
+    const obliqCorr = meanObliqEcliptic + 0.00256 * Math.cos((125.04 - 1934.136 * t) * DEG_TO_RAD);
+    const obliqCorrRad = obliqCorr * DEG_TO_RAD;
+
+    // 3. DÉCLINAISON SOLAIRE EXACTE
+    // Hauteur angulaire du soleil par rapport au plan de l'équateur terrestre (détermine les saisons).
+    const sunTrueLongRad = sunTrueLong * DEG_TO_RAD;
+    const declinationRad = Math.asin(Math.sin(obliqCorrRad) * Math.sin(sunTrueLongRad));
+
+    // 4. CALCUL DE L'ÉQUATION DU TEMPS (En minutes)
+    // Corrige l'écart quotidien entre l'heure de nos montres (temps uniforme) et le soleil (temps solaire vrai).
+    const varY = Math.pow(Math.tan(obliqCorrRad / 2), 2);
+    const geoMeanLongSunRad = geoMeanLongSun * DEG_TO_RAD;
+    
+    const equationOfTimeMinutes = 4 * RAD_TO_DEG * (
+        varY * Math.sin(2 * geoMeanLongSunRad) - 
+        2 * 0.016708 * Math.sin(geoMeanAnomSunRad) + 
+        4 * 0.016708 * varY * Math.sin(geoMeanAnomSunRad) * Math.cos(2 * geoMeanLongSunRad) - 
+        0.5 * Math.pow(varY, 2) * Math.sin(4 * geoMeanLongSunRad) - 
+        1.25 * Math.pow(0.016708, 2) * Math.sin(2 * geoMeanAnomSunRad)
+    );
+
+    // 5. CALCUL DE L'ANGLE HORAIRE UNIVERSEL cos(H)
+    // Angle d'horizon aéronautique standard de -0.833° (prend en compte la réfraction de l'air et le rayon du disque solaire).
+    const altRad = -0.833 * DEG_TO_RAD;
     const cosH = (Math.sin(altRad) - Math.sin(latRad) * Math.sin(declinationRad)) / 
                   (Math.cos(latRad) * Math.cos(declinationRad));
 
-    // Gestion du jour/nuit polaire
+    // Si |cosH| > 1, le soleil ne franchit jamais l'horizon (phénomène de jour ou nuit polaire continue).
     if (Math.abs(cosH) > 1) {
-        console.warn(`[Calcul Solaire] Aucun franchissement d'horizon pour la latitude ${lat} le jour ${dayOfYear} (cosH = ${cosH}).`);
         return null; 
     }
 
-    const H = Math.acos(cosH); 
-    const timeOffsetHours = (H * RAD_TO_DEG) / 15; 
+    // Angle horaire converti en minutes de temps (la Terre tourne de 1° toutes les 4 minutes).
+    const H_minutes = Math.acos(cosH) * RAD_TO_DEG * 4; 
 
-    // Calcul du Midi Solaire Vrai en tenant compte de la longitude
-    let solarNoon = new Date(date);
-    solarNoon.setUTCHours(12, 0, 0, 0); 
+    // 6. CALCUL DU MIDI SOLAIRE EN HEURE LOCALE
+    // 720 minutes = 12h00. On soustrait (4 * lon) car à l'Ouest de Greenwich (longitude négative en JS), 
+    // le soleil passe plus tard. On ajoute le décalage politique (timezoneOffsetMinutes) de la machine.
+    const timezoneOffsetMinutes = -date.getTimezoneOffset();
+    const localNoonMinutes = 720 - (4 * lon) - equationOfTimeMinutes + timezoneOffsetMinutes;
 
-    const longitudeOffsetHours = lon / 15; 
-    const solarNoonUTC = solarNoon.getTime() - (longitudeOffsetHours * 3600000);
+    // 7. CALAGE DE L'ÉVÉNEMENT (Avant ou après midi)
+    // Pour le coucher, on ajoute l'angle horaire à midi; pour le lever, on le soustrait.
+    const eventOffsetMinutes = isSunset ? (localNoonMinutes + H_minutes) : (localNoonMinutes - H_minutes);
 
-    let eventTimeUTC;
-    if (isSunset) {
-        eventTimeUTC = solarNoonUTC + (timeOffsetHours * 3600000);
-    } else {
-        eventTimeUTC = solarNoonUTC - (timeOffsetHours * 3600000);
-    }
-
-    return eventTimeUTC;
-}
-
-
-/**
- * ============================================================================
- * LOGIQUE PRINCIPALE : DÉTERMINATION DES ÉVÉNEMENTS PERTINENTS
- * ============================================================================
- */
-function determineRelevantSunEventsFromStorage() {
-    const STORAGE_KEY = "protrek.user.location";
-    const rawData = localStorage.getItem(STORAGE_KEY);
-
-    if (!rawData) {
-        console.warn(`[LocalStorage] Impossible de lire la clé "${STORAGE_KEY}". L'historique ou les données de position sont absents.`);
-        return { status: "Erreur : LocalStorage non trouvé", result: { sunrise: null, sunset: null } };
-    }
-
-    let location;
-    try {
-        location = JSON.parse(rawData); 
-        if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
-             throw new Error("Latitude ou longitude manquante ou invalide.");
-        }
-    } catch (e) {
-        console.warn(`[Data Corruption] Problème lors du parsing des coordonnées géographiques : ${e.message}`);
-        return { status: `Erreur de lecture des données : ${e.message}`, result: { sunrise: null, sunset: null } };
-    }
-
-    const { latitude, longitude } = location;
-    const currentTime = new Date();
-    const currentMs = currentTime.getTime();
-
-    // --- Calculs des points clés ---
-    const todayLocal = new Date(currentTime);
-    const sunriseTodayMs = calculateEventTime(latitude, longitude, todayLocal, false);
-    const todaySunsetMs = calculateEventTime(latitude, longitude, todayLocal, true);
-
-    const tomorrowLocal = addDays(todayLocal, 1);
-    const sunriseTomorrowMs = calculateEventTime(latitude, longitude, tomorrowLocal, false);
-
-    const yesterdayLocal = addDays(todayLocal, -1);
-    const sunsetYesterdayMs = calculateEventTime(latitude, longitude, yesterdayLocal, true);
-
-    // --- Détermination du scénario actuel ---
-    let result = { sunrise: null, sunset: null };
-    let statusMessage = "Le calcul solaire est impossible pour cette latitude/longitude (nuit polaire ou jour polaire).";
-
-    if (sunriseTodayMs && todaySunsetMs) {
-        
-        // Cas 1 : Avant le lever de ce matin (< SR_T)
-        if (currentMs < sunriseTodayMs) {
-            result.sunrise = formatTime(sunriseTodayMs);
-            result.sunset = formatTime(todaySunsetMs);
-            statusMessage = "Avant l'aube : Le soleil va se lever et se coucher ce jour.";
-        } 
-        // Cas 2 : Entre le lever et le coucher (SR_T <= Current < SS_T)
-        else if (currentMs >= sunriseTodayMs && currentMs < todaySunsetMs) {
-            result.sunrise = formatTime(sunriseTodayMs);
-            result.sunset = formatTime(todaySunsetMs);
-            statusMessage = "En pleine journée : Le soleil est actuellement visible.";
-        } 
-        // Cas 3 : Après le coucher (Current >= SS_T)
-        else if (currentMs >= todaySunsetMs) {
-            result.sunrise = sunriseTomorrowMs ? formatTime(sunriseTomorrowMs) : null; 
-            result.sunset = sunsetYesterdayMs ? formatTime(sunsetYesterdayMs) : null;   
-            statusMessage = "Après le crépuscule : Coucher passé, voici l'heure du prochain lever.";
-        }
-    } else {
-        console.warn(`[Zone Polaire] Les coordonnées intégrées (Lat: ${latitude}, Lon: ${longitude}) se situent actuellement dans une zone de jour ou nuit polaire continue.`);
-    }
-
-    return { result, status: statusMessage };
+    // 8. CRÉATION DU TIMESTAMP LOCAL STRICT
+    const resultDate = new Date(date);
+    resultDate.setHours(0, 0, 0, 0); // On se positionne à minuit local
+    
+    // On ajoute le décalage calculé en millisecondes pour obtenir le timestamp exact de l'événement
+    return resultDate.getTime() + (eventOffsetMinutes * 60000);
 }
 
 
@@ -145,19 +124,25 @@ function determineRelevantSunEventsFromStorage() {
 // EXPORTATION OPTIMISÉE POUR LE CANVAS (Avec mise en cache journalière)
 // ============================================================================
 
-// Variables de cache internes
+// Variables persistantes servant de mémoire tampon (évite de saturer le processeur à 60 fps)
 let cachedAngles = null;
-let lastCalculatedDay = null; // Stocke la chaîne de caractères du jour (ex: "2026-10-04")
+let lastCalculatedDay = null; 
 
+/**
+ * Calcule et extrait la position angulaire en radians pour le lever et le coucher.
+ * Intègre un système de cache pour ne s'exécuter qu'une seule fois par jour.
+ * @param {Date} currentDate - La date actuelle fournie par la boucle de rendu de l'horloge.
+ * @returns {Object|null} Un objet contenant les deux angles { sunriseAngleRad, sunsetAngleRad } ou null.
+ */
 function getSunEventAngles(currentDate) {
+    // Identifiant unique du jour (format court "AAAA-MM-JJ")
     const currentDayStr = currentDate.getFullYear() + "-" + currentDate.getMonth() + "-" + currentDate.getDate();
 
-    // Si les angles ont déjà été calculés pour AUJOURD'HUI, on retourne directement le cache
+    // SÉCURITÉ DE PERFORMANCE : Si le jour n'a pas changé, on renvoie immédiatement les angles en mémoire
     if (cachedAngles !== null && lastCalculatedDay === currentDayStr) {
         return cachedAngles;
     }
 
-    // Sinon (changement de jour ou premier démarrage), on effectue le calcul lourd une seule fois
     const STORAGE_KEY = "protrek.user.location";
     const rawData = localStorage.getItem(STORAGE_KEY);
     if (!rawData) return null;
@@ -166,21 +151,29 @@ function getSunEventAngles(currentDate) {
         const location = JSON.parse(rawData);
         if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') return null;
 
-        const sunriseMs = calculateEventTime(location.latitude, location.longitude, currentDate, false);
-        const sunsetMs = calculateEventTime(location.latitude, location.longitude, currentDate, true);
+        // Arrondi à une seule décimale (Précision physique d'un écran de montre Casio Pro Trek)
+        const proTrekLat = parseFloat(location.latitude.toFixed(1));
+        const proTrekLon = parseFloat(location.longitude.toFixed(1));
+
+        // Calcul astronomique des timestamps locaux
+        const sunriseMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, false);
+        const sunsetMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, true);
 
         if (!sunriseMs || !sunsetMs) return null;
 
         const sunriseDate = new Date(sunriseMs);
         const sunsetDate = new Date(sunsetMs);
 
+        // Conversion des heures, minutes et secondes des événements en heures décimales (ex: 6h30 -> 6.5)
         const sunriseHours = sunriseDate.getHours() + sunriseDate.getMinutes() / 60 + sunriseDate.getSeconds() / 3600;
         const sunsetHours = sunsetDate.getHours() + sunsetDate.getMinutes() / 60 + sunsetDate.getSeconds() / 3600;
 
+        // Traduction en angles pour un cadran 24 heures (360° / 24h = 15° par heure).
+        // On ajoute 180° car la structure de votre cadran positionne le 12 en haut et le 24 en bas.
         const sunriseAngleRad = ((sunriseHours * 15) + 180) * Math.PI / 180;
         const sunsetAngleRad = ((sunsetHours * 15) + 180) * Math.PI / 180;
 
-        // Mise à jour du cache mondial
+        // Sauvegarde dans le cache global pour le reste de la journée
         cachedAngles = { sunriseAngleRad, sunsetAngleRad };
         lastCalculatedDay = currentDayStr;
 
@@ -191,5 +184,5 @@ function getSunEventAngles(currentDate) {
     }
 }
 
-// Rendre la fonction accessible globalement
+// Liaison de la fonction d'export à l'objet global window pour qu'elle soit lue par horloge.js
 window.getSunEventAngles = getSunEventAngles;

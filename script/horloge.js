@@ -179,7 +179,7 @@ function drawDial() {
         const isCardinalMinute = (s % 5 === 0);        // Marque un repère plus fort toutes les 5 minutes
 
         const longueurTrait = isCardinalMinute ? (size * 0.026) : (size * 0.013);
-        const couleurTrait = HANDS.second.color; 
+        const couleurTrait = '#fff'; 
         const epaisseurTrait = isCardinalMinute ? Math.max(2, size * 0.006) : 1;
 
         const xStart = centerX + Math.cos(angleRad) * rMinutes;

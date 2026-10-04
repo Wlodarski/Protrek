@@ -322,22 +322,51 @@ function updateClock() {
     const hAngle = (heureDixMinutes * (Math.PI * 2)) / 24 + Math.PI;
 
     // 5. RENDU DES AIGUILLES ET FINITIONS
+    const outlineColor = '#172033'; // Couleur sombre identique aux guichets pour détacher les aiguilles
+
+    // --- AIGUILLE DES HEURES (Silhouette puis couleur de remplissage) ---
+    const hOutlineW1 = (size * HANDS.hour.widthFactor / 9) + 2;
+    const hOutlineW2 = (size * HANDS.hour.widthFactor) + 2;
+    drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.16), outlineColor, hOutlineW1);
+    drawHand(hAngle, size * HANDS.hour.lenFactor, outlineColor, hOutlineW2);
+    
     drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.16), HANDS.hour.color, size * HANDS.hour.widthFactor / 9);
     drawHand(hAngle, size * HANDS.hour.lenFactor, HANDS.hour.color, size * HANDS.hour.widthFactor);
+
+    // --- AIGUILLE DES MINUTES (Silhouette puis couleur de remplissage) ---
+    const mOutlineW1 = (size * HANDS.minute.widthFactor / 7) + 2;
+    const mOutlineW2 = (size * HANDS.minute.widthFactor) + 2;
+    drawHand(mAngle, size * HANDS.minute.lenFactor + (size * 0.03), outlineColor, mOutlineW1);
+    drawHand(mAngle, size * HANDS.minute.lenFactor * 0.82, outlineColor, mOutlineW2);
+    
     drawHand(mAngle, size * HANDS.minute.lenFactor * 0.82, HANDS.minute.color, size * HANDS.minute.widthFactor);
     drawHand(mAngle, size * HANDS.minute.lenFactor + (size * 0.03), HANDS.minute.color, size * HANDS.minute.widthFactor / 7);
+
+    // --- AIGUILLE DES SECONDES (Silhouette puis couleur de remplissage) ---
+    const sOutlineW = (size * HANDS.second.widthFactor) + 2;
+    drawHand(sAngle, size * HANDS.second.lenFactor, outlineColor, sOutlineW);
     drawHand(sAngle, size * HANDS.second.lenFactor, HANDS.second.color, size * HANDS.second.widthFactor);
 
+    // --- PLOT CENTRAL ---
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
     ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
+    
+    // Contour du plot central
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, (size * 0.02) + 1, 0, Math.PI * 2);
+    ctx.fillStyle = outlineColor;
+    ctx.fill();
+    
+    // Cœur du plot central
     ctx.beginPath();
     ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2);
     ctx.fillStyle = HANDS.second.color;
     ctx.fill();
     ctx.restore();
+
 
     drawGlass();
 

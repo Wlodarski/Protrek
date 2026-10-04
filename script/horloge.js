@@ -283,7 +283,7 @@ function updateClock() {
             ctx.save();
             ctx.strokeStyle = HANDS.second.color; // Bleu cyan assorti à la trotteuse
             ctx.lineWidth = Math.max(3, size * 0.008);
-            ctx.lineCap = "round";
+            ctx.lineCap = "square";
 
             const angles = [sunAngles.sunriseAngleRad, sunAngles.sunsetAngleRad];
             

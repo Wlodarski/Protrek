@@ -21,7 +21,7 @@ let r = 147;          // Rayon maximal du cadran extérieur
 
 // Configuration des aiguilles (facteurs proportionnels à la taille de l'écran)
 const HANDS = {
-    minute: { lenFactor: 0.31, color: '#fff', widthFactor: 0.02 }, // S'arrête pile à la piste interne
+    minute: { lenFactor: 0.31, color: '#eef2f7', widthFactor: 0.02 }, // S'arrête pile à la piste interne
     hour: { lenFactor: 0.23, color: '#fff', widthFactor: 0.04 },       // Navigue dans la zone centrale
     second: { lenFactor: 0.33, color: '#38bdf8', widthFactor: 0.01 }  // Frôle délicatement la piste interne
 };
@@ -179,7 +179,7 @@ function drawDial() {
         const isCardinalMinute = (s % 5 === 0);        // Marque un repère plus fort toutes les 5 minutes
 
         const longueurTrait = isCardinalMinute ? (size * 0.026) : (size * 0.013);
-        const couleurTrait = '#fff'; 
+        const couleurTrait = '#fff';
         const epaisseurTrait = isCardinalMinute ? Math.max(2, size * 0.006) : 1;
 
         const xStart = centerX + Math.cos(angleRad) * rMinutes;
@@ -275,7 +275,7 @@ function updateClock() {
 
     // 2. RENDU DES COUCHES INFÉRIEURES (Cadran)
     ctx.save(); drawDial(); ctx.restore();
-    
+
     // 3. INJECTION DES TRAITS BLEUS SOLAIRES
     if (typeof window.getSunEventAngles === 'function') {
         const sunAngles = window.getSunEventAngles(now); // Passe la date actuelle en paramètre
@@ -286,7 +286,7 @@ function updateClock() {
             ctx.lineCap = "square";
 
             const angles = [sunAngles.sunriseAngleRad, sunAngles.sunsetAngleRad];
-            
+
             angles.forEach(angleRad => {
                 const finalAngle = angleRad - Math.PI / 2;
 
@@ -301,7 +301,7 @@ function updateClock() {
                 ctx.lineTo(xEnd, yEnd);
                 ctx.stroke();
             });
-            
+
             ctx.restore();
         }
     }
@@ -322,7 +322,7 @@ function updateClock() {
     const hAngle = (heureDixMinutes * (Math.PI * 2)) / 24 + Math.PI;
 
     // 5. RENDU DES AIGUILLES ET FINITIONS
-    drawHand(mAngle, size * HANDS.minute.lenFactor, HANDS.minute.color, size * HANDS.minute.widthFactor);
+    drawHand(mAngle, size * HANDS.minute.lenFactor * 0.8, HANDS.minute.color, size * HANDS.minute.widthFactor);
     drawHand(mAngle, size * HANDS.minute.lenFactor + (size * 0.03), HANDS.minute.color, size * HANDS.minute.widthFactor / 4);
     drawHand(hAngle, size * HANDS.hour.lenFactor, HANDS.hour.color, size * HANDS.hour.widthFactor);
     drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.16), HANDS.hour.color, size * HANDS.hour.widthFactor / 9);
@@ -333,8 +333,8 @@ function updateClock() {
     ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
-    ctx.beginPath(); 
-    ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2); 
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, size * 0.02, 0, Math.PI * 2);
     ctx.fillStyle = HANDS.second.color;
     ctx.fill();
     ctx.restore();

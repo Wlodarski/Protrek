@@ -19,10 +19,13 @@ let centerX = 150;    // Coordonnée X du centre de l'horloge
 let centerY = 150;    // Coordonnée Y du centre de l'horloge
 let r = 147;          // Rayon maximal du cadran extérieur
 
+// Canvas hors-écran servant de cache pour l'arrière-plan statique (optimisation des performances)
+let dialCacheCanvas = null;
+
 // Configuration des aiguilles (facteurs proportionnels à la taille de l'écran)
 const HANDS = {
     minute: { lenFactor: 0.31, color: '#eef2f7', widthFactor: 0.02 }, // S'arrête pile à la piste interne
-    hour: { lenFactor: 0.23, color: '#e7edf4', widthFactor: 0.04 },       // Navigue dans la zone centrale
+    hour: { lenFactor: 0.18, color: '#e7edf4', widthFactor: 0.04 },       // Navigue dans la zone centrale
     second: { lenFactor: 0.33, color: '#38bdf8', widthFactor: 0.01 }  // Frôle délicatement la piste interne
 };
 
@@ -40,6 +43,9 @@ function resizeCanvas() {
     centerX = size / 2;
     centerY = size / 2;
     r = (size / 2) - 3; // Rayon proportionnel avec une marge de sécurité de 3px
+
+    // Régénère le cache du cadran statique à la bonne dimension
+    generateDialCache();
 }
 
 /**
@@ -115,22 +121,30 @@ function drawGlass() {
 }
 
 /**
- * Dessine l'arrière-plan du cadran complet :
+ * Prépare et stocke l'arrière-plan du cadran complet dans un canvas hors-écran :
  * - Le cercle de bordure extérieur
  * - Les 48 index extérieurs des heures/demi-heures
  * - La liste des chiffres 24h (01 à 23, le 24 est omis)
  * - La piste des minutes interne (60 graduations uniformes)
  */
-function drawDial() {
+function generateDialCache() {
+    dialCacheCanvas = document.createElement('canvas');
+    dialCacheCanvas.width = size;
+    dialCacheCanvas.height = size;
+    const cacheCtx = dialCacheCanvas.getContext('2d');
+
+    // Sauvegarde du contexte principal pour travailler temporairement sur le contexte du cache
+    cacheCtx.save();
+
     // Grand cercle extérieur de délimitation
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, r - 2, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
-    ctx.lineWidth = size * 0.013;
-    ctx.stroke();
+    cacheCtx.beginPath();
+    cacheCtx.arc(centerX, centerY, r - 2, 0, Math.PI * 2);
+    cacheCtx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
+    cacheCtx.lineWidth = size * 0.013;
+    cacheCtx.stroke();
 
     // --- 1. COURONNE DES 48 INDEX BLANCS EXTÉRIEURS (Heures pleines et demies) ---
-    ctx.save();
+    cacheCtx.save();
     for (let g = 0; g < 48; g++) {
         const angleRad = radians(g * 7.5) - Math.PI / 2; // 360° / 48 index = pas de 7.5°
         const xStart = centerX + Math.cos(angleRad) * (r - (size * 0.023));
@@ -138,21 +152,21 @@ function drawDial() {
         const xEnd = centerX + Math.cos(angleRad) * (r - 2);
         const yEnd = centerY + Math.sin(angleRad) * (r - 2);
 
-        ctx.beginPath();
-        ctx.moveTo(xStart, yStart);
-        ctx.lineTo(xEnd, yEnd);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = Math.max(1, size * 0.003);
-        ctx.stroke();
+        cacheCtx.beginPath();
+        cacheCtx.moveTo(xStart, yStart);
+        cacheCtx.lineTo(xEnd, yEnd);
+        cacheCtx.strokeStyle = '#fff';
+        cacheCtx.lineWidth = Math.max(1, size * 0.003);
+        cacheCtx.stroke();
     }
-    ctx.restore();
+    cacheCtx.restore();
 
     // --- 2. TEXTE DES CHIFFRES DE L'HORLOGE (Format 24h mat teinté Super-LumiNova) ---
-    ctx.save();
-    ctx.fillStyle = '#e1f7d5'; // Couleur jaune-vert pastel
-    ctx.font = `bold ${Math.round(size * 0.068)}px sans-serif`; // Typographie proportionnelle
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    cacheCtx.save();
+    cacheCtx.fillStyle = '#e1f7d5'; // Couleur jaune-vert pastel
+    cacheCtx.font = `bold ${Math.round(size * 0.068)}px sans-serif`; // Typographie proportionnelle
+    cacheCtx.textAlign = 'center';
+    cacheCtx.textBaseline = 'middle';
 
     for (let i = 1; i <= 24; i++) {
         // Rotation de +180° pour inverser le cadran : place le 12 en haut et le 24/date en bas
@@ -161,18 +175,18 @@ function drawDial() {
         const yText = centerY + Math.sin(angleRad) * (r - (size * 0.07));
 
         if (i !== 24) { // On masque textuellement le 24 pour laisser le champ libre aux guichets
-            ctx.fillText(String(i).padStart(2, '0'), xText, yText);
+            cacheCtx.fillText(String(i).padStart(2, '0'), xText, yText);
         }
     }
-    ctx.restore();
+    cacheCtx.restore();
 
     // --- 3. PISTE DES MINUTES INTERNE (60 index fins réguliers) ---
     const rMinutes = r - (size * 0.14);
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, rMinutes, 0, Math.PI * 2);
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    cacheCtx.beginPath();
+    cacheCtx.arc(centerX, centerY, rMinutes, 0, Math.PI * 2);
+    cacheCtx.strokeStyle = '#222';
+    cacheCtx.lineWidth = 1;
+    cacheCtx.stroke();
 
     for (let s = 0; s < 60; s++) {
         const angleRad = radians(s * 6) - Math.PI / 2; // 360° / 60 divisions = pas de 6°
@@ -187,13 +201,15 @@ function drawDial() {
         const xEnd = centerX + Math.cos(angleRad) * (rMinutes - longueurTrait);
         const yEnd = centerY + Math.sin(angleRad) * (rMinutes - longueurTrait);
 
-        ctx.beginPath();
-        ctx.moveTo(xStart, yStart);
-        ctx.lineTo(xEnd, yEnd);
-        ctx.strokeStyle = couleurTrait;
-        ctx.lineWidth = epaisseurTrait;
-        ctx.stroke();
+        cacheCtx.beginPath();
+        cacheCtx.moveTo(xStart, yStart);
+        cacheCtx.lineTo(xEnd, yEnd);
+        cacheCtx.strokeStyle = couleurTrait;
+        cacheCtx.lineWidth = epaisseurTrait;
+        cacheCtx.stroke();
     }
+
+    cacheCtx.restore();
 }
 
 // Affichage de la date : Retour à la configuration et aux proportions d'origine
@@ -273,8 +289,10 @@ function updateClock() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 2. RENDU DES COUCHES INFÉRIEURES (Cadran)
-    ctx.save(); drawDial(); ctx.restore();
+    // 2. RENDU DES COUCHES INFÉRIEURES (Arrière-plan injecté d'un coup depuis la mémoire)
+    if (dialCacheCanvas) {
+        ctx.drawImage(dialCacheCanvas, 0, 0);
+    }
 
     // 3. INJECTION DES TRAITS BLEUS SOLAIRES
     if (typeof window.getSunEventAngles === 'function') {
@@ -327,10 +345,10 @@ function updateClock() {
     // --- AIGUILLE DES HEURES (Silhouette puis couleur de remplissage) ---
     const hOutlineW1 = (size * HANDS.hour.widthFactor / 9) + 2;
     const hOutlineW2 = (size * HANDS.hour.widthFactor) + 2;
-    drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.16), outlineColor, hOutlineW1);
+    drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.21), outlineColor, hOutlineW1);
     drawHand(hAngle, size * HANDS.hour.lenFactor, outlineColor, hOutlineW2);
     
-    drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.16), HANDS.hour.color, size * HANDS.hour.widthFactor / 9);
+    drawHand(hAngle, (size * HANDS.hour.lenFactor) + (size * 0.21), HANDS.hour.color, size * HANDS.hour.widthFactor / 9);
     drawHand(hAngle, size * HANDS.hour.lenFactor, HANDS.hour.color, size * HANDS.hour.widthFactor);
 
     // --- AIGUILLE DES MINUTES (Silhouette puis couleur de remplissage) ---

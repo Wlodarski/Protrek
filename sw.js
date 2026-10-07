@@ -1,4 +1,4 @@
-const CACHE_NAME = 'protrek-v11';
+const CACHE_NAME = 'protrek-v12';
 
 // Domaines d'API externes à exclure absolument du cache du Service Worker
 const EXCLUDED_HOSTNAMES = [

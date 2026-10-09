@@ -287,6 +287,8 @@ function updateClock() {
     // 1. DÉCLARATION PRIORITAIRE DU TEMPS SYSTÈME
     const now = new Date();
 
+    canvas.innerText = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit"});
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 2. RENDU DES COUCHES INFÉRIEURES (Arrière-plan injecté d'un coup depuis la mémoire)

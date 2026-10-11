@@ -1,4 +1,4 @@
-export const APP_VERSION = '2026.10.07 WX3/GLO-90/OSM/σ1/24H';
+export const APP_VERSION = '2026.10.10 WX3/GLO-90/OSM/σ1/24H';
 
 /**
  * Retourne l'étiquette de version à afficher dans l'interface.

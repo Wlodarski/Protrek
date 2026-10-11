@@ -657,12 +657,12 @@ async function computeResult() {
     const totalMinutes = Math.abs(Math.round((nowTimeMs - calTimeMs) / 60000));
 
     // 3. Calcul de la pression théorique affichée
-    const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, currentAltitude);
+    const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, trueAltitude);
     const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
 
     const { erreur_hPa, erreur_m, messageExpectedLocalPressure } = calculatePressureUncertainty(
       pWeatherCurrent,
-      currentAltitude,
+      trueAltitude,
       totalMinutes,
       décalage_hPa
     );

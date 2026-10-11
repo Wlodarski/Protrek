@@ -659,7 +659,6 @@ async function computeResult() {
     // 3. Calcul de la pression théorique affichée
     const calculatePressureAltitude = calculatePressureAtAltitude(pWeatherCurrent, trueAltitude);
     const expectedLocalPressure = calculatePressureAltitude + décalage_hPa;
-
     const { erreur_hPa, erreur_m, messageExpectedLocalPressure } = calculatePressureUncertainty(
       pWeatherCurrent,
       trueAltitude,

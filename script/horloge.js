@@ -24,7 +24,7 @@ let dialCacheCanvas = null;
 
 // Configuration des aiguilles (facteurs proportionnels à la taille de l'écran)
 const HANDS = {
-    minute: { lenFactor: 0.31, color: '#93c5fd', widthFactor: 0.02 }, // S'arrête pile à la piste interne
+    minute: { lenFactor: 0.31, color: '#52D3FF', widthFactor: 0.02 }, // S'arrête pile à la piste interne
     hour: { lenFactor: 0.18, color: '#e7edf4', widthFactor: 0.04 },       // Navigue dans la zone centrale
     second: { lenFactor: 0.33, color: '#38bdf8', widthFactor: 0.01 }  // Frôle délicatement la piste interne
 };

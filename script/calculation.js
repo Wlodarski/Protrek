@@ -103,7 +103,7 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
 /**
  * Détermine si la situation actuelle doit être utilisée au lieu des prévisions pour une heure cible.
  */
-export function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
+/* export function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
   if (!rawData || !Array.isArray(rawData.validTimeLocal) || rawData.validTimeLocal.length === 0) {
     return false;
   }
@@ -117,7 +117,7 @@ export function usesCurrentConditionsForTime(rawData, targetLocalTimeString) {
   const firstForecastMinutes = parseLocalToMinutes(rawData.validTimeLocal[0]);
 
   return Boolean(currentExists && targetMinutes <= firstForecastMinutes);
-}
+} */
 
 /**
  * Calcule la dérive de pression entre l'heure de calibration et l'instant courant.

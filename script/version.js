@@ -1,4 +1,4 @@
-const APP_VERSION = '2026.10.17 WX3/GLO-90/OSM/σ1/24H';
+const APP_VERSION = '2026.10.23 WX3/GLO-90/OSM/σ1/24H';
 
 /**
  * Retourne l'étiquette de version à afficher dans l'interface.

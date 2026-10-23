@@ -13,15 +13,27 @@ const USER_LOCATION_STORAGE_KEY = 'protrek.user.location';
  */
 function isValidLocation(location) {
   return location
-    && Number.isFinite(location.latitude)
-    && Number.isFinite(location.longitude)
-    && Number.isFinite(location.accuracy)
-    && (location.altitude === null || Number.isFinite(location.altitude))
-    && (location.altitudeAccuracy === null || Number.isFinite(location.altitudeAccuracy))
-    && location.latitude >= -90
-    && location.latitude <= 90
-    && location.longitude >= -180
-    && location.longitude <= 180;
+    && hasValidCoordinates(location)
+    && hasValidOptionalMeasurements(location);
+}
+
+function isWithinRange(value, minimum, maximum) {
+  return Number.isFinite(value) && value >= minimum && value <= maximum;
+}
+
+function isNullOrFinite(value) {
+  return value === null || Number.isFinite(value);
+}
+
+function hasValidCoordinates(location) {
+  return isWithinRange(location.latitude, -90, 90)
+    && isWithinRange(location.longitude, -180, 180)
+    && Number.isFinite(location.accuracy);
+}
+
+function hasValidOptionalMeasurements(location) {
+  return isNullOrFinite(location.altitude)
+    && isNullOrFinite(location.altitudeAccuracy);
 }
 
 /**
@@ -55,32 +67,28 @@ function getDefaultLocation() {
  */
 async function altitudeGLO(lat, lon) {
   try {
-    // URL absolue et propre
-    const url = ALTITUDE_API_URL + `?latitude=${lat}&longitude=${lon}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
-    }
-
-    // Sécurité : On vérifie que le serveur renvoie bien du JSON et non de l'HTML (ex: <!doctype ...)
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new TypeError("Le serveur n’a pas renvoyé un format JSON valide.");
-    }
-
-    const data = await response.json();
-
-    // Extraction sécurisée du tableau d'élévation
-    if (data && Array.isArray(data.elevation) && data.elevation.length > 0) {
-      const elevationValue = data.elevation[0];
-      return elevationValue;
-    }
-
-    return null;
+    const url = `${ALTITUDE_API_URL}?latitude=${lat}&longitude=${lon}`;
+    return await fetchElevation(url);
   } catch (err) {
     dispatchGpsStatus(`[GLO-90] ${err.message}`, 'error');
     return null;
+  }
+}
+
+async function fetchElevation(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+  ensureJsonResponse(response, "Le serveur n’a pas renvoyé un format JSON valide.");
+  const data = await response.json();
+  return data && Array.isArray(data.elevation) && data.elevation.length > 0
+    ? data.elevation[0]
+    : null;
+}
+
+function ensureJsonResponse(response, errorMessage) {
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new TypeError(errorMessage);
   }
 }
 
@@ -285,80 +293,67 @@ async function buildMapURL() {
   return mapURL;
 }
 
+function createMapRequestBody(location) {
+  return {
+    style: "osm-liberty",
+    scaleFactor: 2,
+    width: 800,
+    height: 600,
+    center: { lat: location.latitude, lon: location.longitude },
+    zoom: 14,
+    markers: [{
+      lat: location.latitude,
+      lon: location.longitude,
+      color: "#ff0000",
+      size: "42"
+    }]
+  };
+}
+
+async function parseMapError(response) {
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    const errorJson = await response.json();
+    throw {
+      isApiError: true,
+      statusCode: errorJson.statusCode || response.status,
+      error: errorJson.error || "Erreur API",
+      message: errorJson.message || "Aucun message fourni"
+    };
+  }
+
+  const errorText = await response.text();
+  throw new Error(`HTTP ${response.status} : ${errorText}`);
+}
+
+async function fetchMapBlob(request) {
+  dispatchGpsStatus("[CARTE] Téléchargement de la carte statique...", 'info');
+  const response = await fetch(request);
+  if (!response.ok) await parseMapError(response);
+
+  const imageBlob = await response.blob();
+  dispatchGpsStatus("[CARTE] Carte récupérée avec succès.", 'info');
+  const { saveMapBlob } = await import('./api_key_storage.js');
+  await saveMapBlob(imageBlob);
+  return imageBlob;
+}
+
 /**
  * Télécharge la carte statique du point de localisation et la sauvegarde en cache.
  */
 export async function fetchMap(location = null) {
   try {
     location ??= await getUserGeocode();
-
-    if (!location) {
-      throw new Error("Impossible d’obtenir une position géographique valide.");
-    }
+    if (!location) throw new Error("Impossible d’obtenir une position géographique valide.");
 
     const url = await buildMapURL();
-
-    const postJSON = {  // https://apidocs.geoapify.com/docs/maps/static/
-      "style": "osm-liberty",
-      "scaleFactor": 2,
-      "width": 800,
-      "height": 600,
-      "center": {
-        "lat": location.latitude,
-        "lon": location.longitude
-      },
-      "zoom": 14,
-      "markers": [
-        {
-          "lat": location.latitude,
-          "lon": location.longitude,
-          "color": "#ff0000",
-          "size": "42"
-        }
-      ]
-    };
-
     const request = new Request(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(postJSON) // <-- CORRIGÉ : Le body est maintenant activé
+      body: JSON.stringify(createMapRequestBody(location))
     });
-
-    dispatchGpsStatus("[CARTE] Téléchargement de la carte statique...", 'info');
-    const response = await fetch(request);
-
-    // 2. Vérification standard de la réponse HTTP
-    if (!response.ok) { // GESTION DES ERREURS (400, 401, 429, 500, etc.)
-      const contentType = response.headers.get("content-type");
-
-      // Si le serveur renvoie du JSON, on extrait les détails de l'erreur (statusCode, error, message)
-      if (contentType && contentType.includes("application/json")) {
-        const errorJson = await response.json();
-        throw {
-          isApiError: true,
-          statusCode: errorJson.statusCode || response.status,
-          error: errorJson.error || "Erreur API",
-          message: errorJson.message || "Aucun message fourni"
-        };
-      } else {
-        // Sécurité si le serveur renvoie du texte brut ou du HTML
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status} : ${errorText}`);
-      }
-    }
-
-    // 3. Extraction de l'image sous forme de Blob
-    const imageBlob = await response.blob();
-    dispatchGpsStatus("[CARTE] Carte récupérée avec succès.", 'info');
-
-    // AJOUT : Sauvegarde le blob dans IndexedDB en arrière-plan
-    const { saveMapBlob } = await import('./api_key_storage.js');
-    await saveMapBlob(imageBlob);
-
-    // 4. Retourne une URL locale utilisable directement dans un attribut src="..."
+    const imageBlob = await fetchMapBlob(request);
     return URL.createObjectURL(imageBlob);
-
-
   } catch (e) {
     dispatchGpsStatus(`[Carte] Échec de la récupération : ${e.message}`, "error");
     return null;

@@ -302,69 +302,73 @@ function getStoredLocation() {
  * Ajoute un bloc de contexte géographique au-dessus des détails de prévisions.
  */
 function prependForecastLocation(location) {
-  // 1. Validation de sécurité initiale
   if (!location || !forecastCoverageTextEl) return;
 
-  // 2. Extraction et normalisation des données (Fallback si null/undefined)
-  const hasLatLon = Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
-  const latLonText = hasLatLon
+  removeForecastLocationPrefix();
+  const containerSpan = createForecastLocationPrefix(location);
+  forecastCoverageTextEl.prepend(containerSpan);
+}
+
+function removeForecastLocationPrefix() {
+  forecastCoverageTextEl.querySelector('.location-prefix')?.remove();
+}
+
+function formatLocationMeasurement(value, unavailableText) {
+  return Number.isFinite(value) ? `${Math.round(value)} m` : unavailableText;
+}
+
+function createForecastLocationPrefix(location) {
+  const latLonText = Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
     ? `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
     : 'Coordonnées indisponibles';
-
-  const accuracyText = Number.isFinite(location.accuracy)
-    ? `${Math.round(location.accuracy)} m`
-    : 'indéterminée';
-
-  const altitudeText = Number.isFinite(location.altitude)
-    ? `${Math.round(location.altitude)} m`
-    : 'indisponible';
-
-  const altitudeAccuracyText = Number.isFinite(location.altitudeAccuracy)
-    ? `${Math.round(location.altitudeAccuracy)} m`
-    : 'indéterminée';
-
-  // 3. Nettoyage du conteneur pour éviter les duplications lors des rafraîchissements
-  // On ne garde que les éléments de prévisions textuels s'il y en a (gestion dynamique)
-  const existingPrefix = forecastCoverageTextEl.querySelector('.location-prefix');
-  if (existingPrefix) {
-    existingPrefix.remove();
-  }
-
-  // 4. Construction sécurisée du fragment DOM
   const containerSpan = document.createElement('span');
   containerSpan.classList.add('location-prefix');
-
   containerSpan.append(
     document.createTextNode('Prévisions centrées sur '),
     Object.assign(document.createElement('strong'), { textContent: latLonText }),
     document.createTextNode(' avec une précision de '),
-    Object.assign(document.createElement('strong'), { textContent: accuracyText }),
+    Object.assign(document.createElement('strong'), {
+      textContent: formatLocationMeasurement(location.accuracy, 'indéterminée')
+    }),
     document.createTextNode(' et '),
-    Object.assign(document.createElement('strong'), { textContent: altitudeAccuracyText }),
+    Object.assign(document.createElement('strong'), {
+      textContent: formatLocationMeasurement(location.altitudeAccuracy, 'indéterminée')
+    }),
     document.createTextNode(' à '),
-    Object.assign(document.createElement('strong'), { textContent: altitudeText }),
+    Object.assign(document.createElement('strong'), {
+      textContent: formatLocationMeasurement(location.altitude, 'indisponible')
+    }),
     document.createTextNode(' d’élévation.'),
     document.createElement('br'),
     document.createElement('br')
   );
-
-  // 5. Insertion propre en tête du conteneur cible
-  forecastCoverageTextEl.prepend(containerSpan);
+  return containerSpan;
 }
 
 /**
  * Met à jour le résumé de couverture des prévisions et la localisation associée.
  */
 function updateForecastCoverage(rawData) {
-  const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
-  const currentTime = rawData && rawData.current ? rawData.current.validTimeLocal : null;
+  const forecastTimes = getForecastTimes(rawData);
+  const currentTime = getCurrentForecastTime(rawData);
   const location = rawData?.location || getStoredLocation();
+  forecastCoverageTextEl.replaceChildren(...createForecastCoverageContent(forecastTimes, currentTime));
+  prependForecastLocation(location);
+}
+
+function getForecastTimes(rawData) {
+  return rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
+}
+
+function getCurrentForecastTime(rawData) {
+  return rawData && rawData.current ? rawData.current.validTimeLocal : null;
+}
+
+function createForecastCoverageContent(forecastTimes, currentTime) {
   if (forecastTimes.length === 0 && !currentTime) {
-    forecastCoverageTextEl.textContent = 'Prévisions indisponibles.';
-    prependForecastLocation(location);
-    return;
+    return [document.createTextNode('Prévisions indisponibles.')];
   }
-  forecastCoverageTextEl.replaceChildren(
+  return [
     document.createTextNode('Conditions initiales en date du '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(currentTime) }),
     document.createTextNode('. '),
@@ -373,8 +377,7 @@ function updateForecastCoverage(rawData) {
     document.createTextNode(' jusqu’au '),
     Object.assign(document.createElement('strong'), { textContent: formatForecastTime(forecastTimes[forecastTimes.length - 1]) }),
     document.createTextNode('.')
-  );
-  prependForecastLocation(location);
+  ];
 }
 
 /**
@@ -409,41 +412,57 @@ function getCalibrationCoverageWarning(rawData, calibrationTime, currentTime) {
   const calibrationKey = calibrationTime.slice(0, 16);
   const currentKey = currentTime.slice(0, 16);
 
-  // Cas 1 : Temps dans le futur
-  if (calibrationKey > currentKey) {
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'La date de calibration est dans le futur par rapport à l’heure actuelle.', type: 'warn' }
-    }));
-    return; // On stoppe ici pour éviter de cumuler les messages
+  if (isCalibrationInFuture(calibrationKey, currentKey)) {
+    dispatchCalibrationCoverageStatus('future');
+    return;
   }
 
-  const forecastTimes = rawData && Array.isArray(rawData.validTimeLocal) ? rawData.validTimeLocal : [];
+  const forecastTimes = getForecastTimes(rawData);
   if (forecastTimes.length === 0) return;
 
   const firstForecastKey = forecastTimes[0].slice(0, 16);
-  const initialTimeKey = rawData.current && rawData.current.validTimeLocal
-    ? rawData.current.validTimeLocal.slice(0, 16)
-    : firstForecastKey;
+  const initialTimeKey = getInitialForecastTimeKey(rawData, firstForecastKey);
   const lastForecastKey = forecastTimes[forecastTimes.length - 1].slice(0, 16);
 
-  // Cas 2 : Avant l'observation 'current' (Zone fixe passée)
-  if (calibrationKey < initialTimeKey) {
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'Attention : La calibration précède l’observation en direct. Valeur fixe appliquée.', type: 'error' }
-    }));
-  }
-  // Cas 3 : Entre 'current' et la première prévision (Zone interpolée)
-  else if (calibrationKey < firstForecastKey) {
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'La calibration précède les prévisions. Transition fluide calculée par interpolation d’Hermite vers l’observation en direct.', type: 'info' }
-    }));
-  }
-  // Cas 4 : Après la dernière prévision (Zone fixe future)
-  else if (calibrationKey > lastForecastKey) {
-    window.dispatchEvent(new CustomEvent('gps-status', {
-      detail: { message: 'La calibration dépasse les prévisions téléchargées. La dernière prévision disponible est figée.', type: 'warn' }
-    }));
-  }
+  dispatchCalibrationRangeStatus(calibrationKey, initialTimeKey, firstForecastKey, lastForecastKey);
+}
+
+function isCalibrationInFuture(calibrationKey, currentKey) {
+  return calibrationKey > currentKey;
+}
+
+function getInitialForecastTimeKey(rawData, firstForecastKey) {
+  const currentTime = getCurrentForecastTime(rawData);
+  return currentTime ? currentTime.slice(0, 16) : firstForecastKey;
+}
+
+function dispatchCalibrationRangeStatus(calibrationKey, initialTimeKey, firstForecastKey, lastForecastKey) {
+  if (calibrationKey < initialTimeKey) return dispatchCalibrationCoverageStatus('before-current');
+  if (calibrationKey < firstForecastKey) return dispatchCalibrationCoverageStatus('before-forecast');
+  if (calibrationKey > lastForecastKey) return dispatchCalibrationCoverageStatus('after-forecast');
+}
+
+function dispatchCalibrationCoverageStatus(status) {
+  const statuses = {
+    future: {
+      message: 'La date de calibration est dans le futur par rapport à l’heure actuelle.',
+      type: 'warn'
+    },
+    'before-current': {
+      message: 'Attention : La calibration précède l’observation en direct. Valeur fixe appliquée.',
+      type: 'error'
+    },
+    'before-forecast': {
+      message: 'La calibration précède les prévisions. Transition fluide calculée par interpolation d’Hermite vers l’observation en direct.',
+      type: 'info'
+    },
+    'after-forecast': {
+      message: 'La calibration dépasse les prévisions téléchargées. La dernière prévision disponible est figée.',
+      type: 'warn'
+    }
+  };
+  const detail = statuses[status];
+  if (detail) window.dispatchEvent(new CustomEvent('gps-status', { detail }));
 }
 
 /**
@@ -585,6 +604,82 @@ function formatSignedPressure(value, decimals = 1) {
   return `${sign}${magnitude.toFixed(decimals)} hPa`;
 }
 
+function hasValidCalculationInputs(timeValue, calibrationAltitude, currentAltitude) {
+  return Boolean(timeValue)
+    && Number.isFinite(calibrationAltitude)
+    && Number.isFinite(currentAltitude);
+}
+
+function hasRequiredWeatherValues(values) {
+  return !values.some((value) => value === null || value === undefined);
+}
+
+function assertRequiredWeatherValues(values) {
+  if (!hasRequiredWeatherValues(values)) {
+    throw new Error('Données météo manquantes ou indisponibles pour les heures demandées.');
+  }
+}
+
+function getSeverityStyle(severity) {
+  if (severity === 0) return 'color: var(--text-muted, #7f8c8d); font-style: italic;';
+  if (severity === 3) return 'color: var(--status-warning, #f39c12); font-weight: 500;';
+  if (severity >= 4) return 'color: var(--status-error, #e74c3c); font-weight: 600;';
+  return '';
+}
+
+function getPressureOffsetDescription(offset) {
+  return offset !== 0
+    ? `le décalage systématique du capteur (${formatSignedPressure(offset, 3)}) et `
+    : ' ';
+}
+
+function clearStatus() {
+  if (statusEl) statusEl.replaceChildren();
+}
+
+function createResultDetails({
+  currentAltitude,
+  trueAltitude,
+  deltaAlt,
+  timeText,
+  currentPressure,
+  expectedLocalPressure,
+  expectedPressureMessage,
+  pressureOffset,
+  errorHpa,
+  errorM,
+  severityText,
+  severity
+}) {
+  const detailsText = document.createElement('small');
+  detailsText.append(
+    'La correction totale estimée est de ',
+    Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
+    ' par rapport à l’affichage actuel. ',
+    'L’élévation a changé de ',
+    Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
+    '. La pression atmosphérique estimée au niveau de la mer est de ',
+    Object.assign(document.createElement('strong'), { textContent: `${currentPressure.toFixed(1)} hPa` }),
+    '. ',
+    Object.assign(document.createElement('br')),
+    Object.assign(document.createElement('br')),
+    'Votre montre devrait afficher ',
+    expectedPressureMessage,
+    ', idéalement ',
+    Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
+    '. Ce calcul intègre ',
+    getPressureOffsetDescription(pressureOffset),
+    `la marge d’erreur météo à un écart-type (±${errorHpa.toFixed(2)} hPa, équivalant à ±${errorM.toFixed(1)} m).`,
+    Object.assign(document.createElement('br')),
+    Object.assign(document.createElement('br')),
+    Object.assign(document.createElement('span'), {
+      textContent: severityText,
+      style: getSeverityStyle(severity)
+    })
+  );
+  return detailsText;
+}
+
 
 
 /**
@@ -596,7 +691,7 @@ async function computeResult() {
   const currentAltitude = Number(currentAltitudeInput.value);
 
   // 1. Validation initiale des champs via le journal de bord
-  if (!timeValue || !Number.isFinite(calibrationAltitude) || !Number.isFinite(currentAltitude)) {
+  if (!hasValidCalculationInputs(timeValue, calibrationAltitude, currentAltitude)) {
     window.dispatchEvent(new CustomEvent('gps-status', {
       detail: { message: 'Calcul impossible : Veuillez remplir tous les champs du formulaire.', type: 'warn' }
     }));
@@ -626,12 +721,15 @@ async function computeResult() {
     } = getWeatherValues(rawData, calTimeStr, targetTimeStr);
     const severityText = SEVERITY_QUALIFIERS[severityCurrent] || SEVERITY_QUALIFIERS[0];
 
-
     // Sans ces six valeurs, une correction serait numériquement trompeuse.
-    if ([pWeatherCal, pWeatherCurrent, tempWeatherCal, tempWeatherCurrent, humidityCal, humidityCurrent]
-      .some((value) => value === null || value === undefined)) {
-      throw new Error('Données météo manquantes ou indisponibles pour les heures demandées.');
-    }
+    assertRequiredWeatherValues([
+      pWeatherCal,
+      pWeatherCurrent,
+      tempWeatherCal,
+      tempWeatherCurrent,
+      humidityCal,
+      humidityCurrent
+    ]);
 
     // Calculs d'altimétrie et de dérives barométriques
     const hTheoreticalCal = calculateAltitudeFromPressure(pWeatherCal);
@@ -675,57 +773,24 @@ async function computeResult() {
     humidityMetricEl.textContent = formatSignedMetric(humidityContribution, 1);
 
     // 6. Construction et injection du paragraphe de détails qualifié
-    const detailsText = document.createElement('small');
-    detailsText.append(
-
-      /* La correction totale estimée est de -45.9 m par rapport à l’affichage actuel.
-       L’élévation a changé de -44.9 m en 1 jour, 1 heure et 35 minutes.
-       La pression atmosphérique estimée au niveau de la mer est de 1032.2 hPa. */
-
-      'La correction totale estimée est de ',
-      Object.assign(document.createElement('strong'), { textContent: `${(trueAltitude - currentAltitude).toFixed(1)} m` }),
-      ' par rapport à l’affichage actuel. ',
-      'L’élévation a changé de ',
-      Object.assign(document.createElement('strong'), { textContent: `${deltaAlt.toFixed(1)} m en ${timeText}` }),
-      '. ',
-      'La pression atmosphérique estimée au niveau de la mer est de ',
-      Object.assign(document.createElement('strong'), { textContent: `${pWeatherCurrent.toFixed(1)} hPa` }),
-      '. ',
-      Object.assign(document.createElement('br')),
-      Object.assign(document.createElement('br')),
-
-      /* Votre montre devrait afficher entre 1029 hPa et 1033 hPa.
-      Ce calcul intègre le décalage systématique du capteur (+2,953 hPa)
-      et la marge d'erreur météo à 95 % (±2,0 hPa, équivalant à ±3,9 m). */
-
-      'Votre montre devrait afficher ',
-      messageExpectedLocalPressure,
-      `, idéalement `,
-      Object.assign(document.createElement('strong'), { textContent: `${expectedLocalPressure.toFixed(1)} hPa` }),
-      '. Ce calcul intègre ',
-      (décalage_hPa !== 0) ? `le décalage systématique du capteur (${formatSignedPressure(décalage_hPa, 3)}) et ` : ' ',
-      `la marge d’erreur météo à un écart-type (±${(erreur_hPa).toFixed(2)} hPa, équivalant à ±${erreur_m.toFixed(1)} m).`,
-
-      Object.assign(document.createElement('br')),
-      Object.assign(document.createElement('br')),
-
-      /*
-      Les conditions météo sont stables et calmes. */
-
-      // Style dynamique appliqué selon la dangerosité ou l'absence de la donnée
-      Object.assign(document.createElement('span'), {
-        textContent: severityText,
-        style: severityCurrent === 0
-          ? 'color: var(--text-muted, #7f8c8d); font-style: italic;'
-          : (severityCurrent === 3
-            ? 'color: var(--status-warning, #f39c12); font-weight: 500;'
-            : (severityCurrent >= 4 ? 'color: var(--status-error, #e74c3c); font-weight: 600;' : ''))
-      })
-    );
+    const detailsText = createResultDetails({
+      currentAltitude,
+      trueAltitude,
+      deltaAlt,
+      timeText,
+      currentPressure: pWeatherCurrent,
+      expectedLocalPressure,
+      expectedPressureMessage: messageExpectedLocalPressure,
+      pressureOffset: décalage_hPa,
+      errorHpa: erreur_hPa,
+      errorM: erreur_m,
+      severityText,
+      severity: severityCurrent
+    });
     resultDetailsEl.replaceChildren(detailsText);
 
     // 7. Nettoyage et confirmation des métriques de logs
-    if (statusEl) statusEl.replaceChildren();
+    clearStatus();
 
     // Lance l'analyse réécrite de couverture temporelle
     getCalibrationCoverageWarning(rawData, calTimeStr, targetTimeStr);

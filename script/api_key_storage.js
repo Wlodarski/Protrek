@@ -21,6 +21,36 @@ function dispatchStorageStatus(message, type = 'info') {
   }));
 }
 
+async function writeAndVerifyApiKey(database, apiKey, keyName) {
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    const request = transaction.objectStore(STORE_NAME).put(apiKey, keyName);
+    request.onerror = () => reject(request.error);
+    transaction.oncomplete = resolve;
+  });
+
+  const savedApiKey = await new Promise((resolve, reject) => {
+    const request = database.transaction(STORE_NAME, 'readonly')
+      .objectStore(STORE_NAME)
+      .get(keyName);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  if (savedApiKey !== apiKey) {
+    throw new Error('La clé relue ne correspond pas à la clé écrite.');
+  }
+}
+
+function dispatchSavedSettingStatus(keyName) {
+  const statuses = {
+    [API_KEY_NAME]: 'Clé API Weather sauvegardée avec succès.',
+    [MAP_KEY_NAME]: 'Clé API Map sauvegardée avec succès.',
+    [CAL_ERROR_NAME]: 'Calibration sauvegardée avec succès.'
+  };
+  if (statuses[keyName]) dispatchStorageStatus(statuses[keyName], 'success');
+}
+
 /**
  * Enregistre une clé API ou un paramètre de calibration dans le stockage IndexedDB.
  */
@@ -29,32 +59,8 @@ async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
   let database;
   try {
     database = await openDatabase();
-    await new Promise((resolve, reject) => {
-      const transaction = database.transaction(STORE_NAME, 'readwrite');
-      const request = transaction.objectStore(STORE_NAME).put(apiKey, keyName);
-      request.onerror = () => reject(request.error);
-      transaction.oncomplete = resolve;
-    });
-
-    const savedApiKey = await new Promise((resolve, reject) => {
-      const request = database.transaction(STORE_NAME, 'readonly')
-        .objectStore(STORE_NAME)
-        .get(keyName);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-
-    if (savedApiKey !== apiKey) {
-      throw new Error('La clé relue ne correspond pas à la clé écrite.');
-    }
-
-    if (keyName === API_KEY_NAME) {
-      dispatchStorageStatus("Clé API Weather sauvegardée avec succès.", "success");
-    } else if (keyName === MAP_KEY_NAME) {
-      dispatchStorageStatus("Clé API Map sauvegardée avec succès.", "success");
-    } else if (keyName === CAL_ERROR_NAME) {
-      dispatchStorageStatus("Calibration sauvegardée avec succès.", "success");
-    }
+    await writeAndVerifyApiKey(database, apiKey, keyName);
+    dispatchSavedSettingStatus(keyName);
   } catch (error) {
     dispatchStorageStatus(`Échec de sauvegarde du paramètre : ${error.message}`, "error");
   } finally {

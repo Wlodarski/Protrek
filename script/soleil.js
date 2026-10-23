@@ -128,6 +128,25 @@ function calculateEventTime(lat, lon, date, isSunset = false) {
 let cachedAngles = null;
 let lastCalculatedDay = null; 
 
+function calculateSunEventAngles(location, currentDate) {
+    if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') return null;
+
+    const proTrekLat = parseFloat(location.latitude.toFixed(1));
+    const proTrekLon = parseFloat(location.longitude.toFixed(1));
+    const sunriseMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, false);
+    const sunsetMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, true);
+    if (!sunriseMs || !sunsetMs) return null;
+
+    const sunriseDate = new Date(sunriseMs);
+    const sunsetDate = new Date(sunsetMs);
+    const sunriseHours = sunriseDate.getHours() + sunriseDate.getMinutes() / 60 + sunriseDate.getSeconds() / 3600;
+    const sunsetHours = sunsetDate.getHours() + sunsetDate.getMinutes() / 60 + sunsetDate.getSeconds() / 3600;
+    return {
+        sunriseAngleRad: ((sunriseHours * 15) + 180) * Math.PI / 180,
+        sunsetAngleRad: ((sunsetHours * 15) + 180) * Math.PI / 180
+    };
+}
+
 /**
  * Calcule et extrait la position angulaire en radians pour le lever et le coucher.
  * Intègre un système de cache pour ne s'exécuter qu'une seule fois par jour.
@@ -143,38 +162,16 @@ function getSunEventAngles(currentDate) {
         return cachedAngles;
     }
 
-    const STORAGE_KEY = "protrek.user.location";
-    const rawData = localStorage.getItem(STORAGE_KEY);
+    const rawData = localStorage.getItem("protrek.user.location");
     if (!rawData) return null;
 
     try {
         const location = JSON.parse(rawData);
-        if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') return null;
-
-        // Arrondi à une seule décimale (Précision physique d'un écran de montre Casio Pro Trek)
-        const proTrekLat = parseFloat(location.latitude.toFixed(1));
-        const proTrekLon = parseFloat(location.longitude.toFixed(1));
-
-        // Calcul astronomique des timestamps locaux
-        const sunriseMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, false);
-        const sunsetMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, true);
-
-        if (!sunriseMs || !sunsetMs) return null;
-
-        const sunriseDate = new Date(sunriseMs);
-        const sunsetDate = new Date(sunsetMs);
-
-        // Conversion des heures, minutes et secondes des événements en heures décimales (ex: 6h30 -> 6.5)
-        const sunriseHours = sunriseDate.getHours() + sunriseDate.getMinutes() / 60 + sunriseDate.getSeconds() / 3600;
-        const sunsetHours = sunsetDate.getHours() + sunsetDate.getMinutes() / 60 + sunsetDate.getSeconds() / 3600;
-
-        // Traduction en angles pour un cadran 24 heures (360° / 24h = 15° par heure).
-        // On ajoute 180° car la structure de votre cadran positionne le 12 en haut et le 24 en bas.
-        const sunriseAngleRad = ((sunriseHours * 15) + 180) * Math.PI / 180;
-        const sunsetAngleRad = ((sunsetHours * 15) + 180) * Math.PI / 180;
+        const angles = calculateSunEventAngles(location, currentDate);
+        if (!angles) return null;
 
         // Sauvegarde dans le cache global pour le reste de la journée
-        cachedAngles = { sunriseAngleRad, sunsetAngleRad };
+        cachedAngles = angles;
         lastCalculatedDay = currentDayStr;
 
         return cachedAngles;

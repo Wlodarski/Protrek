@@ -127,6 +127,66 @@ function drawGlass() {
  * - La liste des chiffres 24h (01 à 23, le 24 est omis)
  * - La piste des minutes interne (60 graduations uniformes)
  */
+function drawOuterHourIndices(cacheCtx) {
+    cacheCtx.save();
+    for (let g = 0; g < 48; g++) {
+        const angleRad = radians(g * 7.5) - Math.PI / 2;
+        const xStart = centerX + Math.cos(angleRad) * (r - (size * 0.023));
+        const yStart = centerY + Math.sin(angleRad) * (r - (size * 0.023));
+        const xEnd = centerX + Math.cos(angleRad) * (r - 2);
+        const yEnd = centerY + Math.sin(angleRad) * (r - 2);
+        cacheCtx.beginPath();
+        cacheCtx.moveTo(xStart, yStart);
+        cacheCtx.lineTo(xEnd, yEnd);
+        cacheCtx.strokeStyle = '#fff';
+        cacheCtx.lineWidth = Math.max(1, size * 0.003);
+        cacheCtx.stroke();
+    }
+    cacheCtx.restore();
+}
+
+function drawHourNumbers(cacheCtx) {
+    cacheCtx.save();
+    cacheCtx.fillStyle = '#e1f7d5';
+    cacheCtx.font = `bold ${Math.round(size * 0.068)}px sans-serif`;
+    cacheCtx.textAlign = 'center';
+    cacheCtx.textBaseline = 'middle';
+
+    for (let i = 1; i <= 24; i++) {
+        const angleRad = radians((i * 15) + 180) - Math.PI / 2;
+        const xText = centerX + Math.cos(angleRad) * (r - (size * 0.07));
+        const yText = centerY + Math.sin(angleRad) * (r - (size * 0.07));
+        if (i !== 24) cacheCtx.fillText(String(i).padStart(2, '0'), xText, yText);
+    }
+    cacheCtx.restore();
+}
+
+function drawMinuteTrack(cacheCtx) {
+    const rMinutes = r - (size * 0.14);
+    cacheCtx.beginPath();
+    cacheCtx.arc(centerX, centerY, rMinutes, 0, Math.PI * 2);
+    cacheCtx.strokeStyle = '#222';
+    cacheCtx.lineWidth = 1;
+    cacheCtx.stroke();
+
+    for (let s = 0; s < 60; s++) {
+        const angleRad = radians(s * 6) - Math.PI / 2;
+        const isCardinalMinute = s % 5 === 0;
+        const longueurTrait = isCardinalMinute ? (size * 0.026) : (size * 0.013);
+        const epaisseurTrait = isCardinalMinute ? Math.max(2, size * 0.006) : 1;
+        const xStart = centerX + Math.cos(angleRad) * rMinutes;
+        const yStart = centerY + Math.sin(angleRad) * rMinutes;
+        const xEnd = centerX + Math.cos(angleRad) * (rMinutes - longueurTrait);
+        const yEnd = centerY + Math.sin(angleRad) * (rMinutes - longueurTrait);
+        cacheCtx.beginPath();
+        cacheCtx.moveTo(xStart, yStart);
+        cacheCtx.lineTo(xEnd, yEnd);
+        cacheCtx.strokeStyle = '#fff';
+        cacheCtx.lineWidth = epaisseurTrait;
+        cacheCtx.stroke();
+    }
+}
+
 function generateDialCache() {
     dialCacheCanvas = document.createElement('canvas');
     dialCacheCanvas.width = size;
@@ -143,72 +203,9 @@ function generateDialCache() {
     cacheCtx.lineWidth = size * 0.013;
     cacheCtx.stroke();
 
-    // --- 1. COURONNE DES 48 INDEX BLANCS EXTÉRIEURS (Heures pleines et demies) ---
-    cacheCtx.save();
-    for (let g = 0; g < 48; g++) {
-        const angleRad = radians(g * 7.5) - Math.PI / 2; // 360° / 48 index = pas de 7.5°
-        const xStart = centerX + Math.cos(angleRad) * (r - (size * 0.023));
-        const yStart = centerY + Math.sin(angleRad) * (r - (size * 0.023));
-        const xEnd = centerX + Math.cos(angleRad) * (r - 2);
-        const yEnd = centerY + Math.sin(angleRad) * (r - 2);
-
-        cacheCtx.beginPath();
-        cacheCtx.moveTo(xStart, yStart);
-        cacheCtx.lineTo(xEnd, yEnd);
-        cacheCtx.strokeStyle = '#fff';
-        cacheCtx.lineWidth = Math.max(1, size * 0.003);
-        cacheCtx.stroke();
-    }
-    cacheCtx.restore();
-
-    // --- 2. TEXTE DES CHIFFRES DE L'HORLOGE (Format 24h mat teinté Super-LumiNova) ---
-    cacheCtx.save();
-    cacheCtx.fillStyle = '#e1f7d5'; // Couleur jaune-vert pastel
-    cacheCtx.font = `bold ${Math.round(size * 0.068)}px sans-serif`; // Typographie proportionnelle
-    cacheCtx.textAlign = 'center';
-    cacheCtx.textBaseline = 'middle';
-
-    for (let i = 1; i <= 24; i++) {
-        // Rotation de +180° pour inverser le cadran : place le 12 en haut et le 24/date en bas
-        const angleRad = radians((i * 15) + 180) - Math.PI / 2; // 360° / 24 heures = pas de 15°
-        const xText = centerX + Math.cos(angleRad) * (r - (size * 0.07));
-        const yText = centerY + Math.sin(angleRad) * (r - (size * 0.07));
-
-        if (i !== 24) { // On masque textuellement le 24 pour laisser le champ libre aux guichets
-            cacheCtx.fillText(String(i).padStart(2, '0'), xText, yText);
-        }
-    }
-    cacheCtx.restore();
-
-    // --- 3. PISTE DES MINUTES INTERNE (60 index fins réguliers) ---
-    const rMinutes = r - (size * 0.14);
-    cacheCtx.beginPath();
-    cacheCtx.arc(centerX, centerY, rMinutes, 0, Math.PI * 2);
-    cacheCtx.strokeStyle = '#222';
-    cacheCtx.lineWidth = 1;
-    cacheCtx.stroke();
-
-    for (let s = 0; s < 60; s++) {
-        const angleRad = radians(s * 6) - Math.PI / 2; // 360° / 60 divisions = pas de 6°
-        const isCardinalMinute = (s % 5 === 0);        // Marque un repère plus fort toutes les 5 minutes
-
-        const longueurTrait = isCardinalMinute ? (size * 0.026) : (size * 0.013);
-        const couleurTrait = '#fff';
-        const epaisseurTrait = isCardinalMinute ? Math.max(2, size * 0.006) : 1;
-
-        const xStart = centerX + Math.cos(angleRad) * rMinutes;
-        const yStart = centerY + Math.sin(angleRad) * rMinutes;
-        const xEnd = centerX + Math.cos(angleRad) * (rMinutes - longueurTrait);
-        const yEnd = centerY + Math.sin(angleRad) * (rMinutes - longueurTrait);
-
-        cacheCtx.beginPath();
-        cacheCtx.moveTo(xStart, yStart);
-        cacheCtx.lineTo(xEnd, yEnd);
-        cacheCtx.strokeStyle = couleurTrait;
-        cacheCtx.lineWidth = epaisseurTrait;
-        cacheCtx.stroke();
-    }
-
+    drawOuterHourIndices(cacheCtx);
+    drawHourNumbers(cacheCtx);
+    drawMinuteTrack(cacheCtx);
     cacheCtx.restore();
 }
 
@@ -276,6 +273,29 @@ function drawDate() {
 // Variable globale pour suivre l'état de l'animation de l'horloge
 let clockAnimationId = null;
 
+function drawSunEventMarkers(now) {
+    if (typeof window.getSunEventAngles !== 'function') return;
+    const sunAngles = window.getSunEventAngles(now);
+    if (!sunAngles) return;
+
+    ctx.save();
+    ctx.strokeStyle = HANDS.second.color;
+    ctx.lineWidth = Math.max(3, size * 0.008);
+    ctx.lineCap = "square";
+    [sunAngles.sunriseAngleRad, sunAngles.sunsetAngleRad].forEach((angleRad) => {
+        const finalAngle = angleRad - Math.PI / 2;
+        const xStart = centerX + Math.cos(finalAngle) * (r - (size * 0.035));
+        const yStart = centerY + Math.sin(finalAngle) * (r - (size * 0.035));
+        const xEnd = centerX + Math.cos(finalAngle) * (r - 2);
+        const yEnd = centerY + Math.sin(finalAngle) * (r - 2);
+        ctx.beginPath();
+        ctx.moveTo(xStart, yStart);
+        ctx.lineTo(xEnd, yEnd);
+        ctx.stroke();
+    });
+    ctx.restore();
+}
+
 // Boucle d'animation principale
 function updateClock() {
     // MODE ÉCONOMIE D'ÉNERGIE
@@ -297,34 +317,7 @@ function updateClock() {
     }
 
     // 3. INJECTION DES TRAITS BLEUS SOLAIRES
-    if (typeof window.getSunEventAngles === 'function') {
-        const sunAngles = window.getSunEventAngles(now); // Passe la date actuelle en paramètre
-        if (sunAngles) {
-            ctx.save();
-            ctx.strokeStyle = HANDS.second.color; // Bleu cyan assorti à la trotteuse
-            ctx.lineWidth = Math.max(3, size * 0.008);
-            ctx.lineCap = "square";
-
-            const angles = [sunAngles.sunriseAngleRad, sunAngles.sunsetAngleRad];
-
-            angles.forEach(angleRad => {
-                const finalAngle = angleRad - Math.PI / 2;
-
-                // Longueur ajustée pour mordre parfaitement sur la couronne des index extérieurs
-                const xStart = centerX + Math.cos(finalAngle) * (r - (size * 0.035));
-                const yStart = centerY + Math.sin(finalAngle) * (r - (size * 0.035));
-                const xEnd = centerX + Math.cos(finalAngle) * (r - 2);
-                const yEnd = centerY + Math.sin(finalAngle) * (r - 2);
-
-                ctx.beginPath();
-                ctx.moveTo(xStart, yStart);
-                ctx.lineTo(xEnd, yEnd);
-                ctx.stroke();
-            });
-
-            ctx.restore();
-        }
-    }
+    drawSunEventMarkers(now);
 
     ctx.save(); drawDate(); ctx.restore();
 

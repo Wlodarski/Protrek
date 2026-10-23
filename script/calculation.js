@@ -23,73 +23,80 @@ function parseLocalToMinutes(dateStr) {
 }
 
 /**
- * Renvoie la valeur d'un champ météo interpolée à une heure locale donnée.
+ * Vérifie que les données météo contiennent les séries nécessaires à l'interpolation.
  */
-export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
-  if (!rawData || !Array.isArray(rawData.validTimeLocal) || !Array.isArray(rawData[fieldName])) {
-    return null;
-  }
+function hasInterpolationData(rawData, fieldName) {
+  return Boolean(rawData)
+    && Array.isArray(rawData.validTimeLocal)
+    && Array.isArray(rawData[fieldName]);
+}
 
-  // 1. Copie locale des données pour éviter de modifier l'objet original par référence
-  let localTimes = [...rawData.validTimeLocal];
-  let values = [...rawData[fieldName]];
-  const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
-  let timesMinutes = localTimes.map((timeStr) => parseLocalToMinutes(timeStr));
+function getCurrentValidTime(current) {
+  if (!current) return null;
+  return current.validTimeLocal;
+}
 
-  // 2. Récupération de la valeur 'current' et de son heure exacte
-  const currentFieldValue = rawData.current && rawData.current[fieldName] !== undefined
-    ? rawData.current[fieldName]
-    : null;
-  const currentValidTime = rawData.current && rawData.current.validTimeLocal;
+function getCurrentFieldValue(current, fieldName) {
+  if (!current || current[fieldName] === undefined) return null;
+  return current[fieldName];
+}
 
-  // 3. Injection de 'current' au tout début si elle existe et possède un horodatage valide
-  if (currentFieldValue !== null && currentValidTime) {
-    const currentTimeMinutes = parseLocalToMinutes(currentValidTime);
+function shouldInsertCurrentPoint(currentTimeMinutes, timesMinutes) {
+  return timesMinutes.length === 0 || currentTimeMinutes < timesMinutes[0];
+}
 
-    // Sécurité : On s'assure que la donnée actuelle est bien chronologiquement 
-    // antérieure à la première prévision avant de l'insérer au début
-    if (timesMinutes.length === 0 || currentTimeMinutes < timesMinutes[0]) {
-      timesMinutes.unshift(currentTimeMinutes);
-      values.unshift(currentFieldValue);
-    }
-  }
+function insertCurrentPoint(current, fieldName, timesMinutes, values) {
+  const currentFieldValue = getCurrentFieldValue(current, fieldName);
+  const currentValidTime = getCurrentValidTime(current);
+  if (currentFieldValue === null || !currentValidTime) return;
 
-  // 4. Gestion des limites après injection
-  if (timesMinutes.length === 0) return null;
-  if (targetMinutes <= timesMinutes[0]) {
-    return values[0];
-  }
-  if (targetMinutes >= timesMinutes[timesMinutes.length - 1]) {
-    return values[values.length - 1];
-  }
+  const currentTimeMinutes = parseLocalToMinutes(currentValidTime);
+  if (!shouldInsertCurrentPoint(currentTimeMinutes, timesMinutes)) return;
+  timesMinutes.unshift(currentTimeMinutes);
+  values.unshift(currentFieldValue);
+}
 
-  // 5. Recherche de l'intervalle pour l'interpolation
+/**
+ * Prépare les points d'interpolation et ajoute la mesure actuelle si elle précède les prévisions.
+ */
+function getInterpolationPoints(rawData, fieldName) {
+  if (!hasInterpolationData(rawData, fieldName)) return null;
+
+  const values = [...rawData[fieldName]];
+  const timesMinutes = rawData.validTimeLocal.map((timeStr) => parseLocalToMinutes(timeStr));
+  insertCurrentPoint(rawData.current, fieldName, timesMinutes, values);
+  return { timesMinutes, values };
+}
+
+function findInterpolationInterval(timesMinutes, targetMinutes) {
   let i = 0;
   while (i < timesMinutes.length - 1 && timesMinutes[i + 1] <= targetMinutes) {
     i += 1;
   }
+  return i;
+}
 
+function interpolateLogarithmically(v0, v1, fraction) {
+  const logV0 = Math.log(Math.max(v0, 1e-6));
+  const logV1 = Math.log(Math.max(v1, 1e-6));
+  return Math.exp(logV0 + fraction * (logV1 - logV0));
+}
+
+function getPreviousValue(values, i) {
+  return i > 0 ? values[i - 1] : values[i];
+}
+
+function getNextValue(values, i) {
+  return i < values.length - 2 ? values[i + 2] : values[i + 1];
+}
+
+function interpolateHermite(timesMinutes, values, i, fraction, tDelta) {
   const t0 = timesMinutes[i];
   const t1 = timesMinutes[i + 1];
   const v0 = values[i];
   const v1 = values[i + 1];
-  const vPrev = i > 0 ? values[i - 1] : v0;
-  const vNext = i < values.length - 2 ? values[i + 2] : v1;
-
-  if (t1 === t0) return v0;
-
-  const fraction = (targetMinutes - t0) / (t1 - t0);
-  const tDelta = t1 - t0;
-
-  // Cas particulier de la pression (Interpolation logarithmique)
-  if (fieldName === 'pressureMeanSeaLevel') {
-    const logV0 = Math.log(Math.max(v0, 1e-6));
-    const logV1 = Math.log(Math.max(v1, 1e-6));
-    const logInterpolated = logV0 + fraction * (logV1 - logV0);
-    return Math.exp(logInterpolated);
-  }
-
-  // Interpolation d'Hermite (bénéficie maintenant d'une pente de départ ultra-précise)
+  const vPrev = getPreviousValue(values, i);
+  const vNext = getNextValue(values, i);
   const slope0 = (v1 - vPrev) / (tDelta + (timesMinutes[i] - timesMinutes[i - 1] || tDelta));
   const slope1 = (vNext - v0) / (tDelta + (timesMinutes[i + 2] - t1 || tDelta));
   const h00 = 2 * fraction * fraction * fraction - 3 * fraction * fraction + 1;
@@ -98,6 +105,46 @@ export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
   const h11 = fraction * fraction * fraction - fraction * fraction;
 
   return h00 * v0 + h10 * (tDelta * slope0) + h01 * v1 + h11 * (tDelta * slope1);
+}
+
+/**
+ * Renvoie la valeur d'un champ météo interpolée à une heure locale donnée.
+ */
+export function getValueAtTime(rawData, targetLocalTimeString, fieldName) {
+  const points = getInterpolationPoints(rawData, fieldName);
+  if (!points) return null;
+
+  const { timesMinutes, values } = points;
+  const targetMinutes = parseLocalToMinutes(targetLocalTimeString);
+  return getValueFromPoints(timesMinutes, values, targetMinutes, fieldName);
+}
+
+function getValueFromPoints(timesMinutes, values, targetMinutes, fieldName) {
+  const boundary = getBoundaryValue(timesMinutes, values, targetMinutes);
+  if (boundary.found) return boundary.value;
+
+  const i = findInterpolationInterval(timesMinutes, targetMinutes);
+
+  const t0 = timesMinutes[i];
+  const t1 = timesMinutes[i + 1];
+  const v0 = values[i];
+  if (t1 === t0) return v0;
+
+  const fraction = (targetMinutes - t0) / (t1 - t0);
+  const tDelta = t1 - t0;
+  if (fieldName === 'pressureMeanSeaLevel') {
+    return interpolateLogarithmically(v0, values[i + 1], fraction);
+  }
+  return interpolateHermite(timesMinutes, values, i, fraction, tDelta);
+}
+
+function getBoundaryValue(timesMinutes, values, targetMinutes) {
+  if (timesMinutes.length === 0) return { found: true, value: null };
+  if (targetMinutes <= timesMinutes[0]) return { found: true, value: values[0] };
+  if (targetMinutes >= timesMinutes[timesMinutes.length - 1]) {
+    return { found: true, value: values[values.length - 1] };
+  }
+  return { found: false, value: null };
 }
 
 /**

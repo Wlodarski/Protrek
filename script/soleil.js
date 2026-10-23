@@ -30,6 +30,31 @@ function formatTime(timestampMs) {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
+function normalizeAngle(angle) {
+    return ((angle % 360) + 360) % 360;
+}
+
+function getSunEventOffset(localNoonMinutes, hourAngleMinutes, isSunset) {
+    return isSunset
+        ? localNoonMinutes + hourAngleMinutes
+        : localNoonMinutes - hourAngleMinutes;
+}
+
+function getSunEventTimes(latitude, longitude, currentDate) {
+    return {
+        sunrise: calculateEventTime(latitude, longitude, currentDate, false),
+        sunset: calculateEventTime(latitude, longitude, currentDate, true)
+    };
+}
+
+function hasSunEventTimes(eventTimes) {
+    return Boolean(eventTimes.sunrise) && Boolean(eventTimes.sunset);
+}
+
+function hasNumericCoordinates(location) {
+    return typeof location.latitude === 'number'
+        && typeof location.longitude === 'number';
+}
 
 /**
  * ============================================================================
@@ -48,12 +73,10 @@ function calculateEventTime(lat, lon, date, isSunset = false) {
 
     // 2. GÉOMÉTRIE ORBITALE DU SOLEIL (Modèle NOAA)
     // Longitude moyenne du soleil (position théorique sur une orbite circulaire parfaite)
-    let geoMeanLongSun = (280.46646 + t * 36000.76983) % 360;
-    if (geoMeanLongSun < 0) geoMeanLongSun += 360;
+    const geoMeanLongSun = normalizeAngle(280.46646 + t * 36000.76983);
 
     // Anomalie moyenne du soleil (angle mesurant la distance par rapport au point le plus proche de son orbite elliptique)
-    let geoMeanAnomSun = (357.52911 + t * 35999.05029) % 360;
-    if (geoMeanAnomSun < 0) geoMeanAnomSun += 360;
+    const geoMeanAnomSun = normalizeAngle(357.52911 + t * 35999.05029);
     const geoMeanAnomSunRad = geoMeanAnomSun * DEG_TO_RAD;
 
     // Équation du centre du soleil (correction géométrique pour passer de l'orbite circulaire à l'orbite elliptique réelle)
@@ -109,7 +132,7 @@ function calculateEventTime(lat, lon, date, isSunset = false) {
 
     // 7. CALAGE DE L'ÉVÉNEMENT (Avant ou après midi)
     // Pour le coucher, on ajoute l'angle horaire à midi; pour le lever, on le soustrait.
-    const eventOffsetMinutes = isSunset ? (localNoonMinutes + H_minutes) : (localNoonMinutes - H_minutes);
+    const eventOffsetMinutes = getSunEventOffset(localNoonMinutes, H_minutes, isSunset);
 
     // 8. CRÉATION DU TIMESTAMP LOCAL STRICT
     const resultDate = new Date(date);
@@ -129,16 +152,15 @@ let cachedAngles = null;
 let lastCalculatedDay = null; 
 
 function calculateSunEventAngles(location, currentDate) {
-    if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') return null;
+    if (!hasNumericCoordinates(location)) return null;
 
     const proTrekLat = parseFloat(location.latitude.toFixed(1));
     const proTrekLon = parseFloat(location.longitude.toFixed(1));
-    const sunriseMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, false);
-    const sunsetMs = calculateEventTime(proTrekLat, proTrekLon, currentDate, true);
-    if (!sunriseMs || !sunsetMs) return null;
+    const eventTimes = getSunEventTimes(proTrekLat, proTrekLon, currentDate);
+    if (!hasSunEventTimes(eventTimes)) return null;
 
-    const sunriseDate = new Date(sunriseMs);
-    const sunsetDate = new Date(sunsetMs);
+    const sunriseDate = new Date(eventTimes.sunrise);
+    const sunsetDate = new Date(eventTimes.sunset);
     const sunriseHours = sunriseDate.getHours() + sunriseDate.getMinutes() / 60 + sunriseDate.getSeconds() / 3600;
     const sunsetHours = sunsetDate.getHours() + sunsetDate.getMinutes() / 60 + sunsetDate.getSeconds() / 3600;
     return {
@@ -157,23 +179,25 @@ function getSunEventAngles(currentDate) {
     // Identifiant unique du jour (format court "AAAA-MM-JJ")
     const currentDayStr = currentDate.getFullYear() + "-" + currentDate.getMonth() + "-" + currentDate.getDate();
 
-    // SÉCURITÉ DE PERFORMANCE : Si le jour n'a pas changé, on renvoie immédiatement les angles en mémoire
-    if (cachedAngles !== null && lastCalculatedDay === currentDayStr) {
-        return cachedAngles;
-    }
+    const cached = getCachedSunEventAngles(currentDayStr);
+    if (cached) return cached;
+    return calculateAndCacheSunEventAngles(currentDate, currentDayStr);
+}
 
+function getCachedSunEventAngles(day) {
+    if (cachedAngles !== null && lastCalculatedDay === day) return cachedAngles;
+    return null;
+}
+
+function calculateAndCacheSunEventAngles(currentDate, currentDayStr) {
     const rawData = localStorage.getItem("protrek.user.location");
     if (!rawData) return null;
 
     try {
-        const location = JSON.parse(rawData);
-        const angles = calculateSunEventAngles(location, currentDate);
+        const angles = calculateSunEventAngles(JSON.parse(rawData), currentDate);
         if (!angles) return null;
-
-        // Sauvegarde dans le cache global pour le reste de la journée
         cachedAngles = angles;
         lastCalculatedDay = currentDayStr;
-
         return cachedAngles;
     } catch (e) {
         console.warn(`[Calcul Solaire Interface] Erreur lors de l'extraction des angles : ${e.message}`);

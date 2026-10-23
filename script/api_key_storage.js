@@ -51,11 +51,15 @@ function dispatchSavedSettingStatus(keyName) {
   if (statuses[keyName]) dispatchStorageStatus(statuses[keyName], 'success');
 }
 
+function isValidStoredSetting(apiKey, keyName) {
+  return apiKey !== undefined && apiKey !== null && Boolean(keyName);
+}
+
 /**
  * Enregistre une clé API ou un paramètre de calibration dans le stockage IndexedDB.
  */
 async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
-  if (apiKey === undefined || apiKey === null || !keyName) return;
+  if (!isValidStoredSetting(apiKey, keyName)) return;
   let database;
   try {
     database = await openDatabase();
@@ -68,6 +72,22 @@ async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
   }
 }
 
+function normalizeStoredValue(apiKey, keyName) {
+  if (keyName !== CAL_ERROR_NAME || apiKey === null) return apiKey;
+  const parsed = parseFloat(apiKey);
+  return isNaN(parsed) ? null : parsed;
+}
+
+async function readStoredValue(database, keyName) {
+  return new Promise((resolve, reject) => {
+    const request = database.transaction(STORE_NAME, 'readonly')
+      .objectStore(STORE_NAME)
+      .get(keyName);
+    request.onsuccess = () => resolve(request.result !== undefined ? request.result : null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 /**
  * Lit une valeur stockée par nom de clé et renvoie null si elle est absente ou invalide.
  */
@@ -75,20 +95,8 @@ async function getStoredApiKey(keyName, errorLabel) {
   let database;
   try {
     database = await openDatabase();
-    let apiKey = await new Promise((resolve, reject) => {
-      const request = database.transaction(STORE_NAME, 'readonly')
-        .objectStore(STORE_NAME)
-        .get(keyName);
-      request.onsuccess = () => resolve(request.result !== undefined ? request.result : null);
-      request.onerror = () => reject(request.error);
-    });
-
-    if (keyName === CAL_ERROR_NAME && apiKey !== null) {
-      const parsed = parseFloat(apiKey);
-      return isNaN(parsed) ? null : parsed;
-    }
-
-    return apiKey;
+    const apiKey = await readStoredValue(database, keyName);
+    return normalizeStoredValue(apiKey, keyName);
   } catch (error) {
     dispatchStorageStatus(`Impossible de lire la clé ${errorLabel} en mémoire : ${error.message}`, "error");
     return null;
@@ -115,22 +123,34 @@ export function getCalError() { return getStoredApiKey(CAL_ERROR_NAME, 'CAL'); }
  */
 async function processStoredApiKey(keyName, urlParamsInstance) {
   const urlParameter = URL_PARAMS[keyName];
-  let apiKey = urlParamsInstance.get(urlParameter);
+  const apiKey = urlParamsInstance.get(urlParameter);
 
-  if (!apiKey) return getStoredApiKey(keyName, urlParameter || 'Paramètre');
+  if (!apiKey) return readSettingFromStorage(keyName, urlParameter);
+  return processUrlSetting(keyName, urlParameter, apiKey);
+}
 
-  if (keyName === CAL_ERROR_NAME) {
-    const parsedCal = parseFloat(apiKey);
-    if (isNaN(parsedCal)) {
-      dispatchStorageStatus(`Le paramètre CAL dans l’URL n’est pas un nombre valide.`, "error");
-      return getStoredApiKey(keyName, urlParameter);
-    }
-    apiKey = parsedCal;
-  }
+async function readSettingFromStorage(keyName, urlParameter) {
+  return getStoredApiKey(keyName, urlParameter || 'Paramètre');
+}
+
+async function processUrlSetting(keyName, urlParameter, apiKey) {
+  const parsedValue = parseUrlSetting(keyName, urlParameter, apiKey);
+  if (parsedValue.invalid) return getStoredApiKey(keyName, urlParameter);
 
   dispatchStorageStatus(`Nouvelle clé ${urlParameter} détectée dans l’URL.`, "info");
-  await saveApiKey(apiKey, keyName);
-  return apiKey;
+  await saveApiKey(parsedValue.value, keyName);
+  return parsedValue.value;
+}
+
+function parseUrlSetting(keyName, urlParameter, apiKey) {
+  if (keyName !== CAL_ERROR_NAME) return { value: apiKey, invalid: false };
+
+  const parsedCal = parseFloat(apiKey);
+  if (isNaN(parsedCal)) {
+    dispatchStorageStatus(`Le paramètre ${urlParameter} dans l’URL n’est pas un nombre valide.`, "error");
+    return { value: null, invalid: true };
+  }
+  return { value: parsedCal, invalid: false };
 }
 
 /**

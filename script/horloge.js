@@ -273,6 +273,18 @@ function drawDate() {
 // Variable globale pour suivre l'état de l'animation de l'horloge
 let clockAnimationId = null;
 
+function isClockHidden() {
+    return document.hidden || document.visibilityState === 'hidden';
+}
+
+function drawCachedDial() {
+    if (dialCacheCanvas) ctx.drawImage(dialCacheCanvas, 0, 0);
+}
+
+function getCurrentMilliseconds(date) {
+    return date.getMilliseconds() || 0;
+}
+
 function drawSunEventMarkers(now) {
     if (typeof window.getSunEventAngles !== 'function') return;
     const sunAngles = window.getSunEventAngles(now);
@@ -299,7 +311,7 @@ function drawSunEventMarkers(now) {
 // Boucle d'animation principale
 function updateClock() {
     // MODE ÉCONOMIE D'ÉNERGIE
-    if (document.hidden || document.visibilityState === 'hidden') {
+    if (isClockHidden()) {
         clockAnimationId = null;
         return;
     }
@@ -312,9 +324,7 @@ function updateClock() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 2. RENDU DES COUCHES INFÉRIEURES (Arrière-plan injecté d'un coup depuis la mémoire)
-    if (dialCacheCanvas) {
-        ctx.drawImage(dialCacheCanvas, 0, 0);
-    }
+    drawCachedDial();
 
     // 3. INJECTION DES TRAITS BLEUS SOLAIRES
     drawSunEventMarkers(now);
@@ -325,7 +335,7 @@ function updateClock() {
     const hour = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
-    const ms = now.getMilliseconds() || 0;
+    const ms = getCurrentMilliseconds(now);
 
     const sAngle = ((seconds + ms / 1000) * (Math.PI * 2)) / 60;
     const minuteCinquieme = minutes + Math.floor(seconds / 12) * 0.2;

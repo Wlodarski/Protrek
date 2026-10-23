@@ -34,11 +34,23 @@ const carteEl = document.getElementById("carte");
 
 // STATUT en journal de bord défillant
 // DOIT PRÉCÉDER L'INITIALISATION SINON RIEN VISIBLE
-window.addEventListener('gps-status', (event) => {
+window.addEventListener('gps-status', renderGpsStatus);
+
+function renderGpsStatus(event) {
   if (!statusEl) return;
   const { message, type } = event.detail;
 
-  // 1. Alignement du conteneur sur vos variables de surface et d'ombrage
+  configureStatusLog();
+  const logLine = document.createElement('div');
+  logLine.textContent = message;
+  logLine.style.lineHeight = '1.4';
+  logLine.style.marginBottom = '0.5rem';
+  styleStatusLine(logLine, type);
+  statusEl.appendChild(logLine);
+  statusEl.scrollTop = statusEl.scrollHeight;
+}
+
+function configureStatusLog() {
   statusEl.style.maxHeight = '10rem';
   statusEl.style.overflowY = 'auto';
   statusEl.style.display = 'flex';
@@ -47,14 +59,9 @@ window.addEventListener('gps-status', (event) => {
   statusEl.style.padding = '10px';
   statusEl.style.fontSize = '0.85rem';
   statusEl.style.textAlign = 'left';
+}
 
-  // 2. Création de la ligne textuelle
-  const logLine = document.createElement('div');
-  logLine.textContent = message;
-  logLine.style.lineHeight = '1.4';
-  logLine.style.marginBottom = '0.5rem';
-
-  // 3. Attribution dynamique des couleurs de texte selon vos jetons de statut :root
+function styleStatusLine(logLine, type) {
   if (type === 'error') {
     logLine.style.color = 'var(--status-error)';
   } else if (type === 'warn') {
@@ -67,11 +74,7 @@ window.addEventListener('gps-status', (event) => {
     // Couleur d'information ou textuelle par défaut
     logLine.style.color = 'var(--status-info, var(--text))';
   }
-
-  // 4. Injection et défilement
-  statusEl.appendChild(logLine);
-  statusEl.scrollTop = statusEl.scrollHeight;
-});
+}
 
 /* 
 *   
@@ -106,9 +109,11 @@ form.addEventListener('submit', async (event) => {
 });
 
 // BOUTON RAFRAICHÎR PRÉVISIONS
-refreshBtn.addEventListener('click', async () => {
+refreshBtn.addEventListener('click', refreshForecast);
+
+async function refreshForecast() {
   // On vide les anciens logs avant de lancer le nouveau cycle
-  if (statusEl) statusEl.replaceChildren();
+  clearStatus();
 
   try {
     const { fetchCombinedForecast, fetchMap } = await import('./weather_client.js');
@@ -118,13 +123,7 @@ refreshBtn.addEventListener('click', async () => {
 
     // Valeurs par défaut pour la calibration
     const location = getStoredLocation();
-    if (location && Number.isFinite(location.altitude)) {
-      // CORRIGÉ : Utilisation du bon pointeur d'élément de formulaire (altitudeInput)
-      altitudeInput.value = location.altitude;
-      window.dispatchEvent(new CustomEvent('gps-status', {
-        detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
-      }));
-    }
+    updateCalibrationAltitude(location);
     timeInput.value = buildCurrentTimeString().slice(0, 16);
 
     // Téléchargement de la nouvelle carte
@@ -141,7 +140,15 @@ refreshBtn.addEventListener('click', async () => {
       detail: { message: error.message || 'Impossible de rafraîchir les prévisions.', type: 'error' }
     }));
   }
-});
+}
+
+function updateCalibrationAltitude(location) {
+  if (!location || !Number.isFinite(location.altitude)) return;
+  altitudeInput.value = location.altitude;
+  window.dispatchEvent(new CustomEvent('gps-status', {
+    detail: { message: `Altitude de calibration actualisée à ${location.altitude} m.`, type: 'info' }
+  }));
+}
 
 
 // INTERNET ON
@@ -194,28 +201,27 @@ async function checkCacheValidity() {
 
   try {
     const forecastData = JSON.parse(storedForecast);
-
-    if (forecastData && forecastData.generatedAt) {
-      const dateGeneration = new Date(forecastData.generatedAt);
-      const maintenant = new Date();
-
-      // Calcul de la différence en heures
-      const differenceHeures = (maintenant - dateGeneration) / (1000 * 60 * 60);
-
-      // Si les données ont plus de 72 heures (3 jours), on purge le cache
-      if (differenceHeures >= 72) {
-        localStorage.removeItem(FORECAST_STORAGE_KEY);
-        await clearMapCache();
-        window.dispatchEvent(new CustomEvent('gps-status', {
-          detail: { message: 'Données météo et carte expirées. Cache réinitialisé.', type: 'warn' }
-        }));
-      }
-    }
+    if (isForecastExpired(forecastData)) await clearExpiredForecastCache();
   } catch (e) {
     // En cas de JSON corrompu en mémoire, on applique une sécurité
     localStorage.removeItem(FORECAST_STORAGE_KEY);
     await clearMapCache();
   }
+}
+
+function isForecastExpired(forecastData) {
+  if (!forecastData?.generatedAt) return false;
+  const dateGeneration = new Date(forecastData.generatedAt);
+  const ageInHours = (Date.now() - dateGeneration) / (1000 * 60 * 60);
+  return ageInHours >= 72;
+}
+
+async function clearExpiredForecastCache() {
+  localStorage.removeItem(FORECAST_STORAGE_KEY);
+  await clearMapCache();
+  window.dispatchEvent(new CustomEvent('gps-status', {
+    detail: { message: 'Données météo et carte expirées. Cache réinitialisé.', type: 'warn' }
+  }));
 }
 
 /**
@@ -233,14 +239,14 @@ async function afficheCarte() {
  */
 function metAJourImageCarte(nouvelleUrl) {
   if (!carteEl) return;
+  revokeCurrentMapUrl();
+  carteEl.src = nouvelleUrl || "img\\cartevide.webp";
+}
 
-  // Si l'ancienne image était un Blob local, on force sa révocation immédiate
+function revokeCurrentMapUrl() {
   if (carteEl.src && carteEl.src.startsWith('blob:')) {
     URL.revokeObjectURL(carteEl.src);
   }
-
-  // Applique la nouvelle URL ou l'image par défaut en cas de panne
-  carteEl.src = nouvelleUrl || "img\\cartevide.webp";
 }
 
 
@@ -289,13 +295,22 @@ function formatSignedMetric(value, decimals = 0) {
  */
 function getStoredLocation() {
   try {
-    const location = JSON.parse(localStorage.getItem(USER_LOCATION_STORAGE_KEY));
-    if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
-      return location;
-    }
+    return parseStoredLocation(localStorage.getItem(USER_LOCATION_STORAGE_KEY));
   } catch (error) {
+    return null;
   }
-  return null;
+}
+
+function parseStoredLocation(storedLocation) {
+  if (!storedLocation) return null;
+  const location = JSON.parse(storedLocation);
+  return isValidStoredLocation(location) ? location : null;
+}
+
+function isValidStoredLocation(location) {
+  return Boolean(location)
+    && Number.isFinite(location.latitude)
+    && Number.isFinite(location.longitude);
 }
 
 /**
@@ -534,17 +549,18 @@ function formatElapsedTime(totalMinutes) {
   const days = Math.floor(totalMinutes / 1440);
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
-  const timeSegments = [];
   const formatUnit = (value, unit) => rtf.format(value, unit).replace(/^dans\s+/, '');
-
-  // Formatage de chaque unité via l'API (en retirant le préfixe "dans ")
-  if (days > 0) timeSegments.push(formatUnit(days, 'day'));
-  if (hours > 0) timeSegments.push(formatUnit(hours, 'hour'));
-  // On affiche les minutes si elles sont présentes, ou si le delta total est de 0
-  if (minutes > 0 || timeSegments.length === 0) timeSegments.push(formatUnit(minutes, 'minute'));
-
-  // Union des segments avec l'API internationale
+  const timeSegments = [
+    { value: days, unit: 'day' },
+    { value: hours, unit: 'hour' },
+    { value: minutes, unit: 'minute' }
+  ].filter(({ value, unit }) => shouldIncludeTimeSegment(value, unit, totalMinutes))
+    .map(({ value, unit }) => formatUnit(value, unit));
   return listFormatter.format(timeSegments);
+}
+
+function shouldIncludeTimeSegment(value, unit, totalMinutes) {
+  return value > 0 || (unit === 'minute' && totalMinutes === 0);
 }
 
 /**

@@ -80,9 +80,12 @@ async function fetchElevation(url) {
   if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
   ensureJsonResponse(response, "Le serveur n’a pas renvoyé un format JSON valide.");
   const data = await response.json();
-  return data && Array.isArray(data.elevation) && data.elevation.length > 0
-    ? data.elevation[0]
-    : null;
+  return getElevationValue(data);
+}
+
+function getElevationValue(data) {
+  if (!data || !Array.isArray(data.elevation) || data.elevation.length === 0) return null;
+  return data.elevation[0];
 }
 
 function ensureJsonResponse(response, errorMessage) {
@@ -165,42 +168,47 @@ function getUserGeocode() {
      * Décide s'il faut relancer une mesure GPS ou finaliser la meilleure localisation.
      */
     const evaluateNextStep = () => {
-      if (attempts < maxAttempts) {
-        setTimeout(executeAttempt, 1500);
-      } else {
-        dispatchGpsStatus(
-          `[GPS] Coordonnées les plus précises : ${bestLocation.latitude}, ${bestLocation.longitude}`,
-          'info'
-        );
-        finalizeLocation(bestLocation);
-      }
+      if (attempts < maxAttempts) return setTimeout(executeAttempt, 1500);
+      dispatchGpsStatus(
+        `[GPS] Coordonnées les plus précises : ${bestLocation.latitude}, ${bestLocation.longitude}`,
+        'info'
+      );
+      finalizeLocation(bestLocation);
     };
 
     /**
      * Finalise la meilleure localisation trouvée et complète ses données d'altitude.
      */
     const finalizeLocation = async (location) => {
-      if (location) {
-
-        dispatchGpsStatus("Récupération de l’élévation GLO-90...", 'info');
-        const estimatedAltitude = await altitudeGLO(location.latitude, location.longitude);
-        if (estimatedAltitude !== null) {
-          location.altitude = estimatedAltitude;
-          location.altitudeAccuracy = 4;  // Absolute Vertical Accuracy : < 4m (90% linear error)
-          dispatchGpsStatus(`[GLO-90] Élévation obtenue : ${estimatedAltitude} m`, 'info');
-        } else {
-          dispatchGpsStatus("[GLO-90] Échec de l’obtention de l’élévation", 'error');
-        }
-
-
-        if (isValidLocation(location)) {
-          localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
-          resolve(location);
-          return;
-        }
-      }
-      resolve(storedLocation || getDefaultLocation());
+      if (!location) return resolveFallbackLocation();
+      await updateLocationAltitude(location);
+      resolveBestLocation(location);
     };
+
+    async function updateLocationAltitude(location) {
+      dispatchGpsStatus("Récupération de l’élévation GLO-90...", 'info');
+      const estimatedAltitude = await altitudeGLO(location.latitude, location.longitude);
+      if (estimatedAltitude === null) {
+        dispatchGpsStatus("[GLO-90] Échec de l’obtention de l’élévation", 'error');
+        return;
+      }
+      location.altitude = estimatedAltitude;
+      location.altitudeAccuracy = 4;
+      dispatchGpsStatus(`[GLO-90] Élévation obtenue : ${estimatedAltitude} m`, 'info');
+    }
+
+    function resolveBestLocation(location) {
+      if (isValidLocation(location)) {
+        localStorage.setItem(USER_LOCATION_STORAGE_KEY, JSON.stringify(location));
+        resolve(location);
+        return;
+      }
+      resolveFallbackLocation();
+    }
+
+    function resolveFallbackLocation() {
+      resolve(storedLocation || getDefaultLocation());
+    }
 
     executeAttempt();
   });
@@ -313,17 +321,20 @@ function createMapRequestBody(location) {
 async function parseMapError(response) {
   const contentType = response.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
-    const errorJson = await response.json();
-    throw {
-      isApiError: true,
-      statusCode: errorJson.statusCode || response.status,
-      error: errorJson.error || "Erreur API",
-      message: errorJson.message || "Aucun message fourni"
-    };
+    throw await createMapApiError(response);
   }
-
   const errorText = await response.text();
   throw new Error(`HTTP ${response.status} : ${errorText}`);
+}
+
+async function createMapApiError(response) {
+  const errorJson = await response.json();
+  return {
+    isApiError: true,
+    statusCode: errorJson.statusCode || response.status,
+    error: errorJson.error || "Erreur API",
+    message: errorJson.message || "Aucun message fourni"
+  };
 }
 
 async function fetchMapBlob(request) {

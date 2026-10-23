@@ -24,7 +24,7 @@ function dispatchStorageStatus(message, type = 'info') {
 /**
  * Enregistre une clé API ou un paramètre de calibration dans le stockage IndexedDB.
  */
-export async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
+async function saveApiKey(apiKey, keyName = API_KEY_NAME) {
   if (apiKey === undefined || apiKey === null || !keyName) return;
   let database;
   try {

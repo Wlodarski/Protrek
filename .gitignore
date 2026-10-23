@@ -146,3 +146,4 @@ vite.config.ts.timestamp-*
 .vite/
 >>>>>>> origin/main
 docs/notes personnelles.txt
+.fallow/
